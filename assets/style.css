@@ -1966,3 +1966,231 @@ div[data-testid="stAlert"] {
     background: #244A73;
     color: #FFFFFF !important;
 }
+
+/* Segmented Tab Bar Styling for Behaviour Trends */
+.st-key-trends_tabs [data-baseweb="tab-list"] {
+    background: #F1F5F9;
+    padding: 4px;
+    border-radius: 10px;
+    border-bottom: none !important;
+    gap: 4px;
+    display: inline-flex;
+    width: auto;
+    margin-bottom: 8px;
+}
+
+.st-key-trends_tabs [data-baseweb="tab"] {
+    padding: 6px 14px !important;
+    border-radius: 7px !important;
+    font-size: 12.5px !important;
+    font-weight: 600 !important;
+    color: #475569 !important;
+    background: transparent !important;
+    border: none !important;
+    transition: all 0.15s ease-in-out;
+}
+
+.st-key-trends_tabs [data-baseweb="tab"]:hover {
+    color: #0F172A !important;
+}
+
+.st-key-trends_tabs [aria-selected="true"] {
+    background: #FFFFFF !important;
+    color: #1E3A8A !important;
+    font-weight: 700 !important;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08) !important;
+}
+
+.st-key-trends_tabs [data-baseweb="tab-highlight"] {
+    display: none !important;
+}
+
+
+/* ==========================================================================
+   LIFELENS - DAILY CHECK-IN REFINED UI STYLING
+   ========================================================================== */
+
+/* Main check-in form wrapper */
+div[data-testid="stForm"] {
+    background: #FFFFFF !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04) !important;
+    padding: 24px 28px !important;
+}
+
+/* Habit and reflection cards */
+.st-key-daily_habits_panel,
+.st-key-personal_reflections_panel {
+    background: #F8FAFC !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 14px !important;
+    padding: 20px !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03) !important;
+    height: 100% !important;
+}
+
+/* Date picker input */
+div[data-testid="stForm"] div[data-testid="stDateInput"] input {
+    background: #FFFFFF !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 9px !important;
+    font-weight: 500 !important;
+    color: #1E293B !important;
+}
+
+/* Number inputs (Screen time, Exercise, Study) */
+div[data-testid="stForm"] div[data-testid="stNumberInput"] input {
+    background: #FFFFFF !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 8px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    color: #0F172A !important;
+}
+
+div[data-testid="stForm"] div[data-testid="stNumberInput"] button {
+    border: 1px solid #CBD5E1 !important;
+    background: #F1F5F9 !important;
+    color: #334155 !important;
+    border-radius: 6px !important;
+}
+
+div[data-testid="stForm"] div[data-testid="stNumberInput"] button:hover {
+    background: #E2E8F0 !important;
+    color: #0F172A !important;
+}
+
+/* Selectbox dropdowns */
+div[data-testid="stForm"] div[data-baseweb="select"] > div {
+    background: #FFFFFF !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 9px !important;
+    font-size: 14px !important;
+    color: #0F172A !important;
+}
+
+/* SLEEP SLIDER - Blue/Purple theme, eliminate any red track/thumb */
+div[data-testid="stForm"] div[data-testid="stSlider"] [role="slider"] {
+    background-color: #2563EB !important;
+    border: 2px solid #FFFFFF !important;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4) !important;
+    width: 20px !important;
+    height: 20px !important;
+}
+
+div[data-testid="stForm"] div[data-testid="stSlider"] [data-baseweb="slider"] div[style*="background"] {
+    background-color: #2563EB !important;
+}
+
+div[data-testid="stForm"] div[data-testid="stSlider"] div[data-testid="stTickBarMin"],
+div[data-testid="stForm"] div[data-testid="stSlider"] div[data-testid="stTickBarMax"] {
+    color: #64748B !important;
+    font-size: 11.5px !important;
+}
+
+/* Optional Reflection panel textarea */
+.st-key-optional_reflection_panel textarea,
+div[data-testid="stForm"] textarea {
+    background: #FFFFFF !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 10px !important;
+    font-size: 13.5px !important;
+    color: #1E293B !important;
+    padding: 10px 12px !important;
+}
+
+.st-key-optional_reflection_panel textarea:focus,
+div[data-testid="stForm"] input:focus,
+div[data-testid="stForm"] textarea:focus {
+    border-color: #2563EB !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+}
+
+/* Form Submit Button */
+div[data-testid="stForm"] button[kind="primaryFormSubmit"] {
+    background: linear-gradient(135deg, #1E3A8A 0%, #2563EB 100%) !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    border-radius: 10px !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.02em !important;
+    min-height: 48px !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    cursor: pointer !important;
+}
+
+div[data-testid="stForm"] button[kind="primaryFormSubmit"]:hover {
+    background: linear-gradient(135deg, #1E40AF 0%, #1D4ED8 100%) !important;
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35) !important;
+    transform: translateY(-1px) !important;
+}
+
+div[data-testid="stForm"] button[kind="primaryFormSubmit"]:active {
+    transform: translateY(0px) !important;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2) !important;
+}
+
+
+/* Daily Check-in compact form layout optimizations */
+div[data-testid="stForm"] {
+    padding: 16px 20px !important;
+}
+
+div[data-testid="stForm"] [data-testid="stVerticalBlock"] {
+    gap: 0.6rem !important;
+}
+
+.st-key-daily_habits_panel,
+.st-key-personal_reflections_panel {
+    padding: 14px 16px !important;
+    margin-bottom: 0px !important;
+}
+
+/* Compact slider labels and tracks */
+div[data-testid="stForm"] div[data-testid="stSlider"] {
+    margin-bottom: 4px !important;
+}
+
+div[data-testid="stForm"] div[data-testid="stSlider"] [data-testid="stWidgetLabel"] p {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #1E293B !important;
+    margin-bottom: 2px !important;
+}
+
+/* Compact dropdowns */
+div[data-testid="stForm"] div[data-testid="stSelectbox"] {
+    margin-bottom: 4px !important;
+}
+
+div[data-testid="stForm"] div[data-testid="stSelectbox"] [data-testid="stWidgetLabel"] p {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #1E293B !important;
+    margin-bottom: 2px !important;
+}
+
+div[data-testid="stForm"] div[data-baseweb="select"] > div {
+    min-height: 38px !important;
+    height: 38px !important;
+}
+
+/* Date input compact */
+div[data-testid="stForm"] div[data-testid="stDateInput"] {
+    margin-bottom: 4px !important;
+}
+
+div[data-testid="stForm"] div[data-testid="stDateInput"] [data-testid="stWidgetLabel"] p {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #1E293B !important;
+    margin-bottom: 2px !important;
+}
+
+div[data-testid="stForm"] div[data-testid="stDateInput"] input {
+    min-height: 38px !important;
+    height: 38px !important;
+}

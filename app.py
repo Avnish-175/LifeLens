@@ -237,79 +237,100 @@ today = datetime.now()
 selected_tab = show_navigation()
 
 if selected_tab == "📝 Daily Check-in":
-    st.header("📝 Your Daily Check-in")
-    st.write("Record your daily habits and reflect on how you felt.")
+    st.markdown('''
+        <div style="margin-bottom: 12px;">
+            <div style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; background: rgba(37, 99, 235, 0.08); border: 1px solid rgba(37, 99, 235, 0.2); color: #2563EB; font-size: 11px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; margin-bottom: 4px;">
+                <span>⏱</span> Daily Check-in · ~1 min
+            </div>
+            <h1 style="margin: 0 0 2px 0; font-size: 24px; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">Daily Check-in</h1>
+            <p style="margin: 0; font-size: 13px; color: #475569; line-height: 1.4;">Take a minute to reflect on your day and keep your wellness picture up to date.</p>
+        </div>
+    ''', unsafe_allow_html=True)
 
     if st.session_state.get("checkin_success_message"):
         st.success(st.session_state.pop("checkin_success_message"))
 
-    st.caption(
-        "Enter what you know. Mood, energy, stress, and productivity are "
-        "personal reflections — there are no right or wrong answers."
-    )
-
-    
     with st.form("daily_checkin"):
 
-        # Date: one clear starting point
-        date = st.date_input("Check-in date")
+        # Date: automatic current date (read-only display)
+        checkin_date = today.date()
+        date = checkin_date
+        formatted_date_display = checkin_date.strftime("%B %d, %Y").replace(" 0", " ")
 
-        habit_col, reflection_col = st.columns(
-            2,
-            gap="medium",
-            vertical_alignment="top"
-        )
+        st.markdown(f'''
+            <div style="margin-bottom: 12px; display: inline-flex; align-items: center; gap: 8px; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 6px 14px; border-radius: 8px;">
+                <span style="font-size: 13px; font-weight: 600; color: #64748B;">📅 Check-in date:</span>
+                <span style="font-size: 13.5px; font-weight: 700; color: #1E293B;">{formatted_date_display}</span>
+                <span style="font-size: 11px; font-weight: 600; color: #2563EB; background: rgba(37, 99, 235, 0.08); padding: 1px 7px; border-radius: 999px;">Today</span>
+            </div>
+        ''', unsafe_allow_html=True)
 
-        # LEFT PANEL — DAILY HABITS
-        with habit_col:
-            with st.container(border=True, key="daily_habits_panel"):
-                st.subheader("Daily habits")
-                st.caption("Record the activities you completed today.")
+        # CARD 1 — 🌱 DAILY HABITS (Compact 2x2 slider grid)
+        with st.container(border=True, key="daily_habits_panel"):
+            st.markdown('''
+                <div style="margin-bottom: 8px;">
+                    <h3 style="margin: 0 0 2px 0; font-size: 16px; font-weight: 700; color: #1E293B;">🌱 Daily Habits</h3>
+                    <div style="font-size: 12px; color: #64748B;">Track the behaviours that shaped your day.</div>
+                </div>
+            ''', unsafe_allow_html=True)
 
+            h_row1_col1, h_row1_col2 = st.columns(2, gap="medium")
+            with h_row1_col1:
                 sleep_hours = st.slider(
-                    "Hours of sleep",
+                    "😴 Hours of sleep",
                     min_value=0.0,
                     max_value=14.0,
                     value=7.0,
                     step=0.5,
+                    format="%.1f hrs",
                     help="How long did you sleep in total?"
                 )
-
-                screen_time = st.number_input(
-                    "Screen time (hours)",
+            with h_row1_col2:
+                screen_time = st.slider(
+                    "💻 Screen time",
                     min_value=0.0,
                     max_value=24.0,
                     value=4.0,
-                    step=0.5
+                    step=0.5,
+                    format="%.1f hrs",
+                    help="Total recreational or non-work screen time"
                 )
 
-                exercise_minutes = st.number_input(
-                    "Exercise (minutes)",
+            h_row2_col1, h_row2_col2 = st.columns(2, gap="medium")
+            with h_row2_col1:
+                exercise_minutes = st.slider(
+                    "🏃 Exercise",
                     min_value=0,
                     max_value=1440,
                     value=30,
-                    step=5
+                    step=5,
+                    format="%d min",
+                    help="Total active movement or workout time"
                 )
-
-                study_hours = st.number_input(
-                    "Study / work (hours)",
+            with h_row2_col2:
+                study_hours = st.slider(
+                    "📚 Study / work",
                     min_value=0.0,
                     max_value=24.0,
                     value=4.0,
-                    step=0.5
+                    step=0.5,
+                    format="%.1f hrs",
+                    help="Time spent studying or focused work"
                 )
 
-        # RIGHT PANEL — PERSONAL REFLECTIONS
-        with reflection_col:
-            with st.container(
-                border=True,
-                key="personal_reflections_panel"
-            ):
-                st.subheader("Personal reflections")
-                st.caption("Optional. Choose the description that fits.")
+        # CARD 2 — 💭 PERSONAL REFLECTIONS (Compact 2x2 dropdown grid)
+        with st.container(border=True, key="personal_reflections_panel"):
+            st.markdown('''
+                <div style="margin-bottom: 8px;">
+                    <h3 style="margin: 0 0 2px 0; font-size: 16px; font-weight: 700; color: #1E293B;">💭 Personal Reflections</h3>
+                    <div style="font-size: 12px; color: #64748B;">How did you feel today? (Optional descriptions)</div>
+                </div>
+            ''', unsafe_allow_html=True)
 
+            r_row1_col1, r_row1_col2 = st.columns(2, gap="medium")
+            with r_row1_col1:
                 mood_choice = st.selectbox(
-                    "Mood",
+                    "😊 Mood",
                     options=[
                         "Prefer not to answer",
                         "Very low",
@@ -320,9 +341,9 @@ if selected_tab == "📝 Daily Check-in":
                     ],
                     index=0
                 )
-
+            with r_row1_col2:
                 energy_choice = st.selectbox(
-                    "Energy",
+                    "⚡ Energy",
                     options=[
                         "Prefer not to answer",
                         "Very low",
@@ -334,8 +355,10 @@ if selected_tab == "📝 Daily Check-in":
                     index=0
                 )
 
+            r_row2_col1, r_row2_col2 = st.columns(2, gap="medium")
+            with r_row2_col1:
                 stress_choice = st.selectbox(
-                    "Stress",
+                    "😌 Stress",
                     options=[
                         "Prefer not to answer",
                         "Very low",
@@ -346,9 +369,9 @@ if selected_tab == "📝 Daily Check-in":
                     ],
                     index=0
                 )
-
+            with r_row2_col2:
                 productivity_choice = st.selectbox(
-                    "Productivity",
+                    "🎯 Productivity",
                     options=[
                         "Prefer not to answer",
                         "Very little progress",
@@ -360,13 +383,19 @@ if selected_tab == "📝 Daily Check-in":
                     index=0
                 )
 
-        # OPTIONAL REFLECTION — BELOW BOTH PANELS
+        # CARD 3 — OPTIONAL REFLECTION
         with st.container(key="optional_reflection_panel"):
-            st.subheader("Optional reflection")
-            st.caption("Add context that numbers and ratings cannot capture.")
+            st.markdown('''
+                <div style="margin-top: 4px; margin-bottom: 4px;">
+                    <div style="font-size: 13px; font-weight: 600; color: #334155;">💭 What influenced your day?</div>
+                    <div style="font-size: 11px; color: #64748B;">Optional reflection · Add context that numbers and ratings cannot capture.</div>
+                </div>
+            ''', unsafe_allow_html=True)
 
             daily_note = st.text_area(
                 "What influenced your day?",
+                label_visibility="collapsed",
+                height=70,
                 placeholder=(
                     "For example: an exam, a busy day, "
                     "a good night's sleep, or a walk outdoors."
@@ -375,7 +404,7 @@ if selected_tab == "📝 Daily Check-in":
             )
 
         submitted = st.form_submit_button(
-            "Save check-in",
+            "✓ Save Check-in",
             use_container_width=True,
             type="primary"
         )
@@ -479,482 +508,590 @@ if selected_tab == "🏠 Dashboard":
             "to unlock your personalised dashboard."
         )
         st.stop()
-    
-    
-    st.markdown("### Explore your dashboard")
 
+    # ==========================================
+    # 1. COMPACT DASHBOARD HEADER
+    # ==========================================
     st.markdown(
         """
-        <div style="
-            display: grid;
-            grid-template-columns: repeat(6, minmax(0, 1fr));
-            gap: 10px;
-            margin-bottom: 24px;
-        ">
-            <a href="#wellness-section" class="dashboard-jump-link">
-                <div style="border:1px solid #D6D9E0;border-radius:9px;padding:10px 4px;text-align:center;color:inherit;">
-                    💚 Wellness
-                </div>
-            </a>
-            <a href="#trends-section" class="dashboard-jump-link">
-                <div style="border:1px solid #D6D9E0;border-radius:9px;padding:10px 4px;text-align:center;color:inherit;">
-                    📈 Trends
-                </div>
-            </a>
-            <a href="#action-section" class="dashboard-jump-link">
-                <div style="border:1px solid #D6D9E0;border-radius:9px;padding:10px 4px;text-align:center;color:inherit;">
-                    🎯 Action Plan
-                </div>
-            </a>
-            <a href="#forecast-section" class="dashboard-jump-link">
-                <div style="border:1px solid #D6D9E0;border-radius:9px;padding:10px 4px;text-align:center;color:inherit;">
-                    🔮 Forecast
-                </div>
-            </a>
-            <a href="#relationships-section" class="dashboard-jump-link">
-                <div style="border:1px solid #D6D9E0;border-radius:9px;padding:10px 4px;text-align:center;color:inherit;">
-                    🧩 Relationships
-                </div>
-            </a>
+        <div style="margin-bottom: 16px;">
+            <div style="font-size: 24px; font-weight: 800; color: #0F172A; letter-spacing: -0.025em; line-height: 1.2;">
+                Your Wellness Snapshot
+            </div>
+            <div style="font-size: 13.5px; color: #64748B; margin-top: 2px;">
+                Here's how you're doing today.
+            </div>
         </div>
         """,
-        unsafe_allow_html=True,
+        unsafe_allow_html=True
     )
-    st.html('<div id="wellness-section"></div>')
-    st.subheader("🌱 Today's Wellness")
 
+    # ==========================================
+    # 2 & 3. COMMAND CENTRE HERO CARDS
+    # Today's Wellness Score (Strongest) + Tomorrow's Forecast (Second)
+    # ==========================================
+    col_today, col_tomorrow = st.columns([1.18, 1], gap="medium")
+
+    with col_today:
+        score_display = f"{round(wellness_score)}" if wellness_score is not None else "--"
+        cat_display = wellness_category if wellness_score is not None else "Insufficient Data"
         
-    # ----------------------------
-    # Score + Category
-    # ----------------------------
-
-    with st.container(key="wellness_summary"):
-        left, right = st.columns([1, 1], gap="medium")
-
-        with left:
-            if wellness_score is not None:
-                st.metric("Overall Wellness", f"{wellness_score}/100")
-                st.caption(
-                    f"Score based on {available_factors} of 7 factors."
-                )
+        if wellness_score is not None:
+            if wellness_score >= 80:
+                score_msg = "Outstanding balance across sleep, habits, and mindset."
+                badge_bg = "#DCFCE7"
+                badge_text = "#15803D"
+            elif wellness_score >= 65:
+                score_msg = "Solid overall wellbeing with steady daily rhythm."
+                badge_bg = "#DBEAFE"
+                badge_text = "#1D4ED8"
+            elif wellness_score >= 50:
+                score_msg = "Moderate balance with room for targeted improvements."
+                badge_bg = "#FEF3C7"
+                badge_text = "#B45309"
             else:
-                st.metric("Overall Wellness", "Not available")
-                st.caption(
-                    "Add valid check-in data to calculate a score."
-                )
+                score_msg = "Key areas need attention to help you recover energy."
+                badge_bg = "#FEE2E2"
+                badge_text = "#B91C1C"
+        else:
+            score_msg = "Add your daily check-in to generate your wellness score."
+            badge_bg = "#F1F5F9"
+            badge_text = "#475569"
 
-        with right:
-            if wellness_score is not None:
-                st.success(wellness_category)
-            else:
-                st.info("More data needed")
+        st.html(
+            f"""
+            <div style="
+                background: linear-gradient(135deg, #0F172A 0%, #1E293B 55%, #1E3A8A 100%);
+                border: 1px solid #334155;
+                border-radius: 14px;
+                padding: 22px 24px;
+                color: #FFFFFF;
+                min-height: 220px;
+                box-shadow: 0 4px 18px rgba(15, 23, 42, 0.12);
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                box-sizing: border-box;
+            ">
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #94A3B8;">
+                            🌱 Today's Wellness
+                        </span>
+                        <span style="background: {badge_bg}; color: {badge_text}; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 700; letter-spacing: 0.01em;">
+                            {cat_display}
+                        </span>
+                    </div>
+                    <div style="display: flex; align-items: baseline; gap: 4px; margin-bottom: 6px;">
+                        <span style="font-size: 48px; font-weight: 800; line-height: 1; color: #F8FAFC; letter-spacing: -0.03em;">
+                            {score_display}
+                        </span>
+                        <span style="font-size: 20px; font-weight: 600; color: #64748B;">
+                            /100
+                        </span>
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size: 13.5px; color: #CBD5E1; line-height: 1.45; font-weight: 450;">
+                        {score_msg}
+                    </div>
+                    <div style="font-size: 12px; color: #94A3B8; margin-top: 5px;">
+                        Based on {available_factors} of 7 recorded factors
+                    </div>
+                </div>
+            </div>
+            """
+        )
 
-    st.markdown("---")
-    # ----------------------------
-    # Wellness Overview
-    # ----------------------------
+    with col_tomorrow:
+        if prediction:
+            forecast_summary = generate_forecast_summary(prediction)
+            t_score, t_cat = calculate_wellness_score(
+                prediction.get("SleepHours"),
+                prediction.get("Mood"),
+                prediction.get("Stress"),
+                prediction.get("Energy"),
+                prediction.get("ExerciseMinutes"),
+                prediction.get("ScreenTime"),
+                prediction.get("Productivity"),
+            )
+            t_score_str = f"{round(t_score)}" if t_score is not None else "--"
+            
+            p_sleep = f"{prediction['SleepHours']}h" if prediction.get("SleepHours") is not None else "--"
+            p_mood = f"{prediction['Mood']}/10" if prediction.get("Mood") is not None else "--"
+            p_stress = f"{prediction['Stress']}/10" if prediction.get("Stress") is not None else "--"
+            p_screen = f"{prediction['ScreenTime']}h" if prediction.get("ScreenTime") is not None else "--"
 
-    st.markdown("### 📊 Wellness Overview")
+            st.html(
+                f"""
+                <div style="
+                    background: linear-gradient(135deg, #1E1B4B 0%, #312E81 50%, #4338CA 100%);
+                    border: 1px solid #4338CA;
+                    border-radius: 14px;
+                    padding: 22px 24px;
+                    color: #FFFFFF;
+                    min-height: 220px;
+                    box-shadow: 0 4px 18px rgba(67, 56, 202, 0.12);
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-between;
+                    box-sizing: border-box;
+                ">
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #C7D2FE;">
+                                🔮 Tomorrow's Forecast
+                            </span>
+                            <span style="background: rgba(255, 255, 255, 0.14); color: #EEF2FF; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600;">
+                                {forecast_summary}
+                            </span>
+                        </div>
+                        <div style="display: flex; align-items: baseline; gap: 5px; margin-bottom: 6px;">
+                            <span style="font-size: 38px; font-weight: 800; line-height: 1; color: #FFFFFF; letter-spacing: -0.02em;">
+                                {t_score_str}
+                            </span>
+                            <span style="font-size: 16px; font-weight: 600; color: #A5B4FC;">
+                                /100 projected
+                            </span>
+                        </div>
+                        <div style="font-size: 13px; color: #E0E7FF; line-height: 1.4; font-weight: 450;">
+                            AI projection based on your recent behavioural momentum.
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; background: rgba(0, 0, 0, 0.22); padding: 7px 8px; border-radius: 9px;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 11px; color: #C7D2FE;">Sleep</div>
+                            <div style="font-size: 13px; font-weight: 700; color: #FFFFFF;">{p_sleep}</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 11px; color: #C7D2FE;">Mood</div>
+                            <div style="font-size: 13px; font-weight: 700; color: #FFFFFF;">{p_mood}</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 11px; color: #C7D2FE;">Stress</div>
+                            <div style="font-size: 13px; font-weight: 700; color: #FFFFFF;">{p_stress}</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 11px; color: #C7D2FE;">Screen</div>
+                            <div style="font-size: 13px; font-weight: 700; color: #FFFFFF;">{p_screen}</div>
+                        </div>
+                    </div>
+                </div>
+                """
+            )
+        else:
+            st.html(
+                """
+                <div style="
+                    background: #F8FAFC;
+                    border: 1px dashed #CBD5E1;
+                    border-radius: 14px;
+                    padding: 22px 24px;
+                    min-height: 220px;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    align-items: center;
+                    text-align: center;
+                    box-sizing: border-box;
+                ">
+                    <div style="font-size: 28px; margin-bottom: 6px;">🔮</div>
+                    <div style="font-size: 15px; font-weight: 700; color: #1E293B; margin-bottom: 3px;">
+                        Tomorrow's Forecast
+                    </div>
+                    <div style="font-size: 13px; color: #64748B; max-width: 270px; line-height: 1.45;">
+                        Log check-ins for a few consecutive days to unlock your AI predictive forecast.
+                    </div>
+                </div>
+                """
+            )
 
-    chart_col, insights_col = st.columns([1.4, 1], gap="large")
+    st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
 
-    with chart_col:
-        with st.container(border=True, key="wellness_chart_panel"):
-            st.markdown("#### Wellness Profile")
+    # ==========================================
+    # 4. WELLNESS BREAKDOWN SECTION
+    # ==========================================
+    st.markdown(
+        """
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+            <div style="font-size: 17px; font-weight: 700; color: #0F172A; letter-spacing: -0.01em;">
+                📊 Wellness Breakdown
+            </div>
+            <div style="font-size: 12.5px; color: #64748B;">
+                Current factor status from your latest check-in
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    factor_items = [
+        ("Sleep", f"{latest['SleepHours']} hrs" if _valid_number(latest.get("SleepHours")) is not None else "--", "😴", "#6366F1", "#EEF2FF"),
+        ("Mood", f"{latest['Mood']}/10" if _valid_number(latest.get("Mood")) is not None else "--", "😊", "#F59E0B", "#FEF3C7"),
+        ("Stress", f"{latest['Stress']}/10" if _valid_number(latest.get("Stress")) is not None else "--", "😌", "#EF4444", "#FEE2E2"),
+        ("Energy", f"{latest['Energy']}/10" if _valid_number(latest.get("Energy")) is not None else "--", "⚡", "#10B981", "#D1FAE5"),
+        ("Exercise", f"{int(latest['ExerciseMinutes'])} min" if _valid_number(latest.get("ExerciseMinutes")) is not None else "--", "🏃", "#06B6D4", "#CFFAFE"),
+        ("Screen Time", f"{latest['ScreenTime']} hrs" if _valid_number(latest.get("ScreenTime")) is not None else "--", "💻", "#8B5CF6", "#EDE9FE"),
+    ]
+
+    breakdown_cols = st.columns(6, gap="small")
+    for col, (f_name, f_val, f_icon, f_color, f_bg) in zip(breakdown_cols, factor_items):
+        with col:
+            st.html(
+                f"""
+                <div style="
+                    background: #FFFFFF;
+                    border: 1px solid #E2E8F0;
+                    border-radius: 12px;
+                    padding: 12px 10px;
+                    text-align: center;
+                    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+                ">
+                    <div style="
+                        width: 28px;
+                        height: 28px;
+                        border-radius: 7px;
+                        background: {f_bg};
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        margin: 0 auto 5px auto;
+                        font-size: 14px;
+                    ">
+                        {f_icon}
+                    </div>
+                    <div style="font-size: 11px; font-weight: 600; color: #64748B; margin-bottom: 2px;">
+                        {f_name}
+                    </div>
+                    <div style="font-size: 14.5px; font-weight: 750; color: #0F172A;">
+                        {f_val}
+                    </div>
+                </div>
+                """
+            )
+
+    with st.expander("🔍 View Wellness Radar & Area Breakdown", expanded=False):
+        radar_col, areas_col = st.columns([1.3, 1], gap="medium")
+        with radar_col:
             st.plotly_chart(
                 radar_chart,
                 use_container_width=True,
                 config={"displayModeBar": False}
             )
-
-    with insights_col:
-        with st.container(border=True, key="wellness_insights_panel"):
-            st.markdown("#### Strongest Areas")
-
+        with areas_col:
+            st.markdown("##### 🌟 Strongest Areas (≥80)")
             strongest_areas = [
                 (factor, score)
                 for factor, score, status in score_breakdown
                 if score is not None and score >= 80
             ]
-
             if strongest_areas:
                 for factor, score in strongest_areas:
-                    st.markdown(
-            f"""
-            <div class="wellness-insight-card positive">
-                <span>{factor}</span>
-                <strong>{score:.0f}/100</strong>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+                    st.html(
+                        f"""
+                        <div class="wellness-insight-card positive" style="padding: 8px 12px; margin-bottom: 6px;">
+                            <span>{factor}</span>
+                            <strong>{score:.0f}/100</strong>
+                        </div>
+                        """
+                    )
             else:
-                st.caption(
-        "No strongest areas identified from the available data."
-    )
+                st.caption("No factors currently at or above 80.")
 
-            st.divider()
-
-            st.markdown("#### Needs Attention")
-
+            st.markdown("##### ⚠️ Focus Areas (<60)")
             attention_areas = [
                 (factor, score)
                 for factor, score, status in score_breakdown
                 if score is not None and score < 60
             ]
-
             if attention_areas:
                 for factor, score in attention_areas:
-                    st.markdown(
-            f"""
-            <div class="wellness-insight-card attention">
-                <span>{factor}</span>
-                <strong>{score:.0f}/100</strong>
+                    st.html(
+                        f"""
+                        <div class="wellness-insight-card attention" style="padding: 8px 12px; margin-bottom: 6px;">
+                            <span>{factor}</span>
+                            <strong>{score:.0f}/100</strong>
+                        </div>
+                        """
+                    )
+            else:
+                st.caption("No factors currently below 60.")
+
+    st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
+
+    # ==========================================
+    # 5. TODAY'S BIGGEST DISCOVERY
+    # Dark premium glass-style insight card
+    # ==========================================
+    st.html(
+        f"""
+        <div style="
+            background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+            border: 1px solid #334155;
+            border-left: 4px solid #6366F1;
+            border-radius: 12px;
+            padding: 12px 18px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: 0 2px 10px rgba(15, 23, 42, 0.12);
+        ">
+            <div style="font-size: 20px; line-height: 1;">💡</div>
+            <div style="flex: 1;">
+                <div style="font-size: 10.5px; font-weight: 750; text-transform: uppercase; letter-spacing: 0.08em; color: #818CF8; margin-bottom: 2px;">
+                    Key Behavioral Discovery
+                </div>
+                <div style="font-size: 13.5px; font-weight: 500; color: #F1F5F9; line-height: 1.4;">
+                    {biggest_discovery}
+                </div>
             </div>
-            """,
-            unsafe_allow_html=True
-        )
-            else:
-                st.caption(
-        "No areas currently fall below this threshold."
+        </div>
+        """
     )
 
-        st.markdown("---")
-    st.markdown("---")
-    st.html('<div id="action-section"></div>')
-    show_biggest_discovery(biggest_discovery)
-    
-    st.markdown("---")
-    
-    # ----------------------------
-    # Your Personal Action Plan
-    # ----------------------------
-    with st.container(key="action_plan_section"):
-        
-        st.subheader("🎯 Your Personal Action Plan")
-        today_col, tomorrow_col = st.columns(2, gap="medium")
+    st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
 
-        with today_col:
-            st.markdown("#### ☀️ Today's Priority")
-
-            supporting_actions = [
-                recommendation
-                for recommendation in recommendations
-                if recommendation not in today_focus
-]
-
-            show_action_plan(today_focus, supporting_actions)
-        with tomorrow_col:
-            st.markdown("#### 🔮 Preparing for Tomorrow")
-
-            if prediction:
-                ai_forecast = generate_ai_forecast_insight(prediction)
-                show_ai_insight(ai_forecast)
-                show_best_action()
-            else:
-                st.info("Tomorrow's wellness forecast is not available yet.")
-    
-
-    st.subheader("📊 Behaviour Summary")
-    st.caption("Your average wellbeing across all recorded check-ins.")
-
-    # -----------------------------
-    # Dynamic Status Labels
-    # -----------------------------
-
-    # Sleep
-    avg_sleep = summary.get("avg_sleep") if summary else None
-    if avg_sleep is None or (isinstance(avg_sleep, float) and math.isnan(avg_sleep)):
-        sleep_status = "No Data"
-        sleep_display = "-- hrs"
-    elif avg_sleep >= 8:
-        sleep_status = "Excellent Sleep"
-        sleep_display = f"{avg_sleep} hrs"
-    elif avg_sleep >= 7:
-        sleep_status = "Healthy Average"
-        sleep_display = f"{avg_sleep} hrs"
-    else:
-        sleep_status = "Needs Improvement"
-        sleep_display = f"{avg_sleep} hrs"
-
-    # Mood
-    avg_mood = summary.get("avg_mood") if summary else None
-    if avg_mood is None or (isinstance(avg_mood, float) and math.isnan(avg_mood)):
-        mood_status = "Not Recorded"
-        mood_display = "--/10"
-    elif avg_mood >= 8:
-        mood_status = "Excellent Mood"
-        mood_display = f"{avg_mood}/10"
-    elif avg_mood >= 6:
-        mood_status = "Moderately Positive"
-        mood_display = f"{avg_mood}/10"
-    else:
-        mood_status = "Needs Attention"
-        mood_display = f"{avg_mood}/10"
-
-    # Stress (lower is better)
-    avg_stress = summary.get("avg_stress") if summary else None
-    if avg_stress is None or (isinstance(avg_stress, float) and math.isnan(avg_stress)):
-        stress_status = "Not Recorded"
-        stress_display = "--/10"
-    elif avg_stress <= 3:
-        stress_status = "Very Low Stress"
-        stress_display = f"{avg_stress}/10"
-    elif avg_stress <= 5:
-        stress_status = "Manageable Stress"
-        stress_display = f"{avg_stress}/10"
-    else:
-        stress_status = "High Stress"
-        stress_display = f"{avg_stress}/10"
-
-    # Wellness
-    if wellness_score is None or (isinstance(wellness_score, float) and math.isnan(wellness_score)):
-        wellness_status = "Insufficient Data"
-        wellness_display = "Not Available"
-    elif wellness_score >= 85:
-        wellness_status = "Excellent Overall"
-        wellness_display = f"{round(wellness_score)}/100"
-    elif wellness_score >= 70:
-        wellness_status = "Healthy Overall"
-        wellness_display = f"{round(wellness_score)}/100"
-    elif wellness_score >= 55:
-        wellness_status = "Fair Overall"
-        wellness_display = f"{round(wellness_score)}/100"
-    else:
-        wellness_status = "Needs Attention"
-        wellness_display = f"{round(wellness_score)}/100"
-
-    col1, col2, col3, col4 = st.columns(4)
-    cards = [
-        {
-            "icon": "🌱",
-            "title": "Wellness",
-            "value": wellness_display,
-            "subtitle": wellness_status,
-            "accent": "#10B981",
-            "background": "#E0F2FE"
-        },
-        {
-            "icon": "😴",
-            "title": "Sleep",
-            "value": sleep_display,
-            "subtitle": sleep_status,
-            "accent": "#6366F1",
-            "background": "#EDE9FE"
-        },
-        {
-            "icon": "😊",
-            "title": "Mood",
-            "value": mood_display,
-            "subtitle": mood_status,
-            "accent": "#F59E0B",
-            "background": "#CCFBF1"
-        },
-        {
-            "icon": "😌",
-            "title": "Stress",
-            "value": stress_display,
-            "subtitle": stress_status,
-            "accent": "#EF4444",
-            "background": "#FEF3C7"
-        }
-    ]
-
-    for column, card in zip([col1, col2, col3, col4], cards):
-
-        with column:
-
-            show_stat_card(card)
-    st.info(
-        "💡 Overall, your recent habits indicate healthy sleep, moderate mood, and manageable stress. Small improvements in physical activity and screen time could further improve your overall wellness."
-    )
-    st.html('<div id="trends-section"></div>')
-    st.markdown("---")
-        
     # ==========================================
-    # Behaviour Trends
+    # 6. RECOMMENDED ACTION PLAN
+    # Focus -> Why -> What to do
+    # Left: Primary Daily Focus (WHAT) | Right: AI Insight (WHY) + Recommended Action (HOW)
     # ==========================================
-    
-    st.subheader("📈 Behaviour Trends")
-    st.caption("Understand how your daily habits have changed over time.")
-
-    left, right = st.columns([1.1, 2.9], gap="large")
-
-    # -----------------------------
-    # LEFT SIDE
-    # -----------------------------
-
-    with left:
-
-        st.subheader("🧠 AI Trend Analysis")
-        st.caption("Automatically generated from your recent behaviour patterns.")
-
-        show_trend_analysis(trend_analysis)
-
-    # -----------------------------
-    # RIGHT SIDE
-    # -----------------------------
-
-    with right:
-
-        sleep_tab, mood_tab, stress_tab, screen_tab = st.tabs([
-    "😴 Sleep",
-    "😊 Mood",
-    "😌 Stress",
-    "📱 Screen Time"
-])
-
-        with sleep_tab:
-            st.plotly_chart(
-                plot_sleep_trend(data),
-                use_container_width=True
-            )
-
-        with mood_tab:
-            st.plotly_chart(
-                plot_mood_trend(data),
-                use_container_width=True
-            )
-
-        with stress_tab:
-            st.plotly_chart(
-                plot_stress_trend(data),
-                use_container_width=True
-            )
-
-        with screen_tab:
-            st.plotly_chart(
-                plot_screen_time_trend(data),
-                use_container_width=True
-            )
-    st.html('<div id="forecast-section"></div>')
-    st.divider()
-    
-    st.subheader("🔮 Tomorrow's Wellness Forecast")
-
-    st.caption("AI prediction generated from your recent behavioural patterns.")
-
-    if prediction:
-
-        forecast = generate_forecast_summary(prediction)
-        explanation = generate_forecast_explanation(prediction)
-        
-
-        # -------------------------
-        # Overall Forecast
-        # -------------------------
-
-        show_forecast(forecast)
-        st.markdown("")
-
-        # -------------------------
-        # Primary Metrics
-        # -------------------------
-
-        col1, col2, col3 = st.columns(3)
-
-        col1.metric(
-            "😴 Sleep",
-            f'{prediction["SleepHours"]} hrs'
-        )
-
-        col2.metric(
-            "😊 Mood",
-            f'{prediction["Mood"]}/10'
-        )
-
-        col3.metric(
-            "😌 Stress",
-            f'{prediction["Stress"]}/10'
-        )
-
-
-        # -------------------------
-        # Secondary Metrics
-        # -------------------------
-
-        col1, col2, col3 = st.columns(3)
-
-        col1.metric(
-            "⚡ Energy",
-            f'{prediction["Energy"]}/10'
-        )
-
-        col2.metric(
-            "💻 Screen Time",
-            f'{prediction["ScreenTime"]} hrs'
-        )
-
-        col3.metric(
-            "🚀 Productivity",
-            f'{prediction["Productivity"]}/10'
-        )
-    st.html('<div id="relationships-section"></div>')
-    st.markdown("---")
-    
-    
-    st.subheader("🧩 Habit Relationships")
-    st.caption(
-        "Discover which daily habits are most closely connected based on your recorded check-ins."
+    st.markdown(
+        """
+        <div style="font-size: 17px; font-weight: 700; color: #0F172A; margin-bottom: 8px; letter-spacing: -0.01em;">
+            🎯 Recommended Action Plan
+        </div>
+        """,
+        unsafe_allow_html=True
     )
 
-    with st.expander("📊 Explore correlation heatmap (advanced)", expanded=False):
+    top_recs = [r for r in recommendations if r != today_focus][:3]
+    action_col_today, action_col_prep = st.columns([1.18, 1], gap="medium")
 
-        if (
-            not correlation_matrix.empty
-            and correlation_matrix.notna().to_numpy().any()
-        ):
-            st.caption(
-                "This chart shows how strongly your recorded habits are related. "
-                "Positive values indicate habits that tend to move together; "
-                "negative values indicate habits that tend to move in opposite directions. "
-                "Correlation does not necessarily mean one habit causes another."
-            )
+    with action_col_today:
+        supporting_items = "".join([
+            f'<div style="font-size: 12.5px; color: #334155; display: flex; align-items: baseline; gap: 7px; line-height: 1.35;"><span style="color: #059669; font-weight: 700;">✓</span><span>{rec}</span></div>'
+            for rec in top_recs
+        ])
+        st.html(
+            f"""
+            <div style="
+                background: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-radius: 12px;
+                padding: 14px 16px;
+                box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+                box-sizing: border-box;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                min-height: 154px;
+            ">
+                <div>
+                    <div style="font-size: 10.5px; font-weight: 750; text-transform: uppercase; letter-spacing: 0.08em; color: #059669; margin-bottom: 4px;">
+                        🎯 Primary Daily Focus
+                    </div>
+                    <div style="font-size: 14px; font-weight: 650; color: #0F172A; margin-bottom: 10px; line-height: 1.35;">
+                        {today_focus}
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size: 10.5px; font-weight: 750; text-transform: uppercase; letter-spacing: 0.06em; color: #64748B; margin-bottom: 5px;">
+                        Key Supporting Habits
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 5px;">
+                        {supporting_items}
+                    </div>
+                </div>
+            </div>
+            """
+        )
 
-            st.plotly_chart(
-                plot_correlation_heatmap(correlation_matrix),
-                use_container_width=True
+    with action_col_prep:
+        if prediction:
+            ai_forecast = generate_ai_forecast_insight(prediction)
+            st.html(
+                f"""
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <div style="
+                        background: #F8FAFC;
+                        border: 1px solid #E2E8F0;
+                        border-left: 4px solid #3B82F6;
+                        border-radius: 10px;
+                        padding: 10px 14px;
+                        box-sizing: border-box;
+                    ">
+                        <div style="font-size: 10px; font-weight: 750; text-transform: uppercase; letter-spacing: 0.07em; color: #2563EB; margin-bottom: 2px;">
+                            💡 AI Insight — Why This Matters
+                        </div>
+                        <div style="font-size: 12.5px; color: #334155; line-height: 1.4;">
+                            {ai_forecast}
+                        </div>
+                    </div>
+                    <div style="
+                        background: #F8FAFC;
+                        border: 1px solid #E2E8F0;
+                        border-left: 4px solid #0D9488;
+                        border-radius: 10px;
+                        padding: 10px 14px;
+                        box-sizing: border-box;
+                    ">
+                        <div style="font-size: 10px; font-weight: 750; text-transform: uppercase; letter-spacing: 0.07em; color: #0D9488; margin-bottom: 2px;">
+                            ⚡ Recommended Action — What to Do
+                        </div>
+                        <div style="font-size: 12.5px; color: #334155; line-height: 1.4;">
+                            Reduce screen time before bed while maintaining your current sleep schedule to support tomorrow's energy and recovery.
+                        </div>
+                    </div>
+                </div>
+                """
             )
         else:
-            st.info(
-                "Not enough valid variation in your check-in data to display "
-                "the correlation heatmap yet. Record more check-ins with "
-                "varied values to reveal relationships."
+            st.html(
+                """
+                <div style="
+                    background: #F8FAFC;
+                    border: 1px dashed #CBD5E1;
+                    border-radius: 12px;
+                    padding: 16px;
+                    min-height: 154px;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    align-items: center;
+                    text-align: center;
+                    box-sizing: border-box;
+                ">
+                    <div style="font-size: 13.5px; font-weight: 600; color: #475569; margin-bottom: 4px;">
+                        Forward Preparation Guidance
+                    </div>
+                    <div style="font-size: 12px; color: #64748B; max-width: 250px; line-height: 1.4;">
+                        Log consistent check-ins to receive forward-looking preparation guidance.
+                    </div>
+                </div>
+                """
             )
 
-    # ---------------------------------------
-    # AI Relationship Insights
-    # ---------------------------------------
+    st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
 
-    
+    # ==========================================
+    # 7. BEHAVIOUR TRENDS
+    # Compact Balanced Layout + Segmented Tab Control + Sized Charts
+    # ==========================================
+    st.markdown(
+        """
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+            <div style="font-size: 17px; font-weight: 700; color: #0F172A; letter-spacing: -0.01em;">
+                📈 Behaviour Trends
+            </div>
+            <div style="font-size: 12.5px; color: #64748B;">
+                7-day trajectory and habit consistency
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    trend_sum_col, trend_charts_col = st.columns([1, 1.65], gap="medium")
+
+    with trend_sum_col:
+        trend_pos = trend_analysis.get("positive", "Keep logging to unlock trend analysis.") if trend_analysis else "Keep logging."
+        trend_watch = trend_analysis.get("watch", "No major changes to monitor.") if trend_analysis else "No data."
+        trend_risk = trend_analysis.get("risk", "No significant risks detected.") if trend_analysis else "No data."
+        trend_rec = trend_analysis.get("recommendation", "Maintain routine.") if trend_analysis else "Maintain routine."
+
+        st.html(
+            f"""
+            <div style="
+                background: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-radius: 12px;
+                padding: 14px 16px;
+                box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+            ">
+                <div style="font-size: 11px; font-weight: 750; color: #1E293B; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em;">
+                    🧠 AI Trend Assessment
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 7px;">
+                    <div style="background: #F0FDF4; border-left: 3px solid #22C55E; padding: 7px 10px; border-radius: 6px;">
+                        <div style="font-size: 10px; font-weight: 750; color: #16A34A; text-transform: uppercase; letter-spacing: 0.04em;">Positive Shift</div>
+                        <div style="font-size: 12px; color: #166534; margin-top: 1px; line-height: 1.35;">{trend_pos}</div>
+                    </div>
+                    <div style="background: #FEF3C7; border-left: 3px solid #F59E0B; padding: 7px 10px; border-radius: 6px;">
+                        <div style="font-size: 10px; font-weight: 750; color: #D97706; text-transform: uppercase; letter-spacing: 0.04em;">Area to Watch</div>
+                        <div style="font-size: 12px; color: #92400E; margin-top: 1px; line-height: 1.35;">{trend_watch}</div>
+                    </div>
+                    <div style="background: #EFF6FF; border-left: 3px solid #3B82F6; padding: 7px 10px; border-radius: 6px;">
+                        <div style="font-size: 10px; font-weight: 750; color: #2563EB; text-transform: uppercase; letter-spacing: 0.04em;">Guidance</div>
+                        <div style="font-size: 12px; color: #1E40AF; margin-top: 1px; line-height: 1.35;">{trend_rec}</div>
+                    </div>
+                </div>
+            </div>
+            """
+        )
+
+    with trend_charts_col:
+        with st.container(key="trends_tabs"):
+            sleep_tab, mood_tab, stress_tab, screen_tab = st.tabs([
+                "😴 Sleep",
+                "😊 Mood",
+                "😌 Stress",
+                "📱 Screen"
+            ])
+            with sleep_tab:
+                fig_sleep = plot_sleep_trend(data)
+                fig_sleep.update_layout(height=245, margin=dict(l=20, r=20, t=35, b=25))
+                st.plotly_chart(fig_sleep, use_container_width=True)
+            with mood_tab:
+                fig_mood = plot_mood_trend(data)
+                fig_mood.update_layout(height=245, margin=dict(l=20, r=20, t=35, b=25))
+                st.plotly_chart(fig_mood, use_container_width=True)
+            with stress_tab:
+                fig_stress = plot_stress_trend(data)
+                fig_stress.update_layout(height=245, margin=dict(l=20, r=20, t=35, b=25))
+                st.plotly_chart(fig_stress, use_container_width=True)
+            with screen_tab:
+                fig_screen = plot_screen_time_trend(data)
+                fig_screen.update_layout(height=245, margin=dict(l=20, r=20, t=35, b=25))
+                st.plotly_chart(fig_screen, use_container_width=True)
+
+    st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
+
+    # ==========================================
+    # 8. HABIT RELATIONSHIPS
+    # Connection Cards + Advanced Heatmap Expander
+    # ==========================================
+    st.markdown(
+        """
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+            <div style="font-size: 17px; font-weight: 700; color: #0F172A; letter-spacing: -0.01em;">
+                🧩 Habit Relationships
+            </div>
+            <div style="font-size: 12.5px; color: #64748B;">
+                Key connections discovered across your recorded check-ins
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
     insights = generate_correlation_insights(correlation_matrix)
-
     positive = insights["positive"] if insights else None
     negative = insights["negative"] if insights else None
-    
-    st.markdown("### AI Relationship Insights")
 
-    # Generate explanations only when a relationship is available.
     positive_explanation = None
     negative_explanation = None
-
     if positive is not None:
         positive_explanation = generate_relationship_explanation(
-            positive["feature1"],
-            positive["feature2"],
-            positive["value"],
+            positive["feature1"], positive["feature2"], positive["value"]
         )
-
     if negative is not None:
         negative_explanation = generate_relationship_explanation(
-            negative["feature1"],
-            negative["feature2"],
-            negative["value"],
+            negative["feature1"], negative["feature2"], negative["value"]
         )
 
-    col1, col2 = st.columns(2)
-
-    with col1:
+    col_pos, col_neg = st.columns(2, gap="medium")
+    with col_pos:
         if positive is not None:
             show_correlation_card(
                 title="Strongest Positive Connection",
@@ -965,12 +1102,9 @@ if selected_tab == "🏠 Dashboard":
                 explanation=positive_explanation,
             )
         else:
-            st.info(
-                "A positive relationship cannot be identified "
-                "from the available data yet."
-            )
+            st.info("A positive relationship cannot be identified from the available data yet.")
 
-    with col2:
+    with col_neg:
         if negative is not None:
             show_correlation_card(
                 title="Strongest Negative Connection",
@@ -981,14 +1115,24 @@ if selected_tab == "🏠 Dashboard":
                 explanation=negative_explanation,
             )
         else:
-            st.info(
-                "A negative relationship cannot be identified "
-                "from the available data yet."
+            st.info("A negative relationship cannot be identified from the available data yet.")
+
+    with st.expander("📊 Explore Detailed Correlation Heatmap", expanded=False):
+        if not correlation_matrix.empty and correlation_matrix.notna().to_numpy().any():
+            st.caption(
+                "This chart shows how strongly your recorded habits are related. "
+                "Positive values indicate habits that tend to move together; "
+                "negative values indicate habits that tend to move in opposite directions. "
+                "Correlation does not necessarily mean one habit causes another."
             )
-    
-# ----------------------------
-# Reports
-# ----------------------------
+            st.plotly_chart(plot_correlation_heatmap(correlation_matrix), use_container_width=True)
+        else:
+            st.info(
+                "Not enough valid variation in your check-in data to display "
+                "the correlation heatmap yet. Record more check-ins with "
+                "varied values to reveal relationships."
+            )
+
 
 if selected_tab == "📊 Reports":
     show_reports(monthly_report)
