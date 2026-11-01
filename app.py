@@ -57,6 +57,31 @@ from src.intelligence import (
 )
 from src.data_manager import check_data_file
 
+@st.dialog("Check-in already exists")
+def confirm_overwrite(new_entry, date):
+    st.write(
+        f"A check-in for **{date}** already exists."
+    )
+
+    st.write(
+        "Do you want to replace the existing check-in "
+        "with this new data?"
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("Cancel", use_container_width=True):
+            st.session_state["pending_overwrite"] = None
+            st.rerun()
+
+    with col2:
+        if st.button("Yes, Overwrite", use_container_width=True):
+            save_data(new_entry)
+            st.session_state["pending_overwrite"] = None
+            st.session_state["checkin_success_message"] = "Check-in overwritten successfully."
+            st.rerun()
+
 check_data_file()
 st.set_page_config(
     page_title="LifeLens",
@@ -211,6 +236,9 @@ selected_tab = show_navigation()
 if selected_tab == "📝 Daily Check-in":
     st.header("📝 Your Daily Check-in")
     st.write("Record your daily habits and reflect on how you felt.")
+
+    if st.session_state.get("checkin_success_message"):
+        st.success(st.session_state.pop("checkin_success_message"))
 
     st.caption(
         "Enter what you know. Mood, energy, stress, and productivity are "
@@ -404,13 +432,34 @@ if selected_tab == "📝 Daily Check-in":
                 "DailyNote": daily_note.strip() or None
             }])
 
-            save_data(new_entry)
+            existing_data = load_data()
 
-            data = load_data()
+            date_string = pd.to_datetime(date).strftime("%Y-%m-%d")
 
-            st.success("Your daily check-in has been saved.")
-            st.subheader("Today's Entry")
-            st.dataframe(new_entry, use_container_width=True)
+            if not existing_data.empty:
+                s = existing_data["Date"].astype(str).str.strip()
+                p = pd.to_datetime(s, format="%Y-%m-%d", errors="coerce")
+                missing_m = p.isna()
+                if missing_m.any():
+                    p.loc[missing_m] = pd.to_datetime(s.loc[missing_m], format="%d-%m-%Y", errors="coerce")
+                still_m = p.isna()
+                if still_m.any():
+                    p.loc[still_m] = pd.to_datetime(s.loc[still_m], format="mixed", errors="coerce")
+                existing_dates = p.dt.strftime("%Y-%m-%d")
+            else:
+                existing_dates = pd.Series(dtype="object")
+
+            if date_string in existing_dates.values:
+                st.session_state["pending_overwrite"] = new_entry
+                confirm_overwrite(new_entry, date_string)
+            else:
+                save_data(new_entry)
+
+                data = load_data()
+
+                st.success("Your daily check-in has been saved.")
+                st.subheader("Today's Entry")
+                st.dataframe(new_entry, use_container_width=True)
 
     
     with st.expander("View Raw Data"):
