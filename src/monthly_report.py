@@ -1,3 +1,6 @@
+import pandas as pd
+
+
 def generate_monthly_report(data):
     """
     AI Monthly Snapshot
@@ -8,32 +11,53 @@ def generate_monthly_report(data):
 
     recent = data.tail(30)
 
-    avg_sleep = round(recent["SleepHours"].mean(), 1)
-    avg_mood = round(recent["Mood"].mean(), 1)
-    avg_stress = round(recent["Stress"].mean(), 1)
-    avg_energy = round(recent["Energy"].mean(), 1)
-    avg_screen = round(recent["ScreenTime"].mean(), 1)
-    avg_productivity = round(recent["Productivity"].mean(), 1)
+    avg_sleep = round(recent["SleepHours"].mean(), 1) if recent["SleepHours"].notna().any() else 0.0
+    avg_mood = round(recent["Mood"].mean(), 1) if recent["Mood"].notna().any() else None
+    avg_stress = round(recent["Stress"].mean(), 1) if recent["Stress"].notna().any() else None
+    avg_energy = round(recent["Energy"].mean(), 1) if recent["Energy"].notna().any() else None
+    avg_screen = round(recent["ScreenTime"].mean(), 1) if recent["ScreenTime"].notna().any() else 0.0
+    avg_productivity = round(recent["Productivity"].mean(), 1) if recent["Productivity"].notna().any() else None
 
-    exercise_days = (recent["ExerciseMinutes"] > 0).sum()
-
-    # ------------------------
-    # Overall AI Score
-    # ------------------------
-
-    score = (
-        avg_sleep * 10 +
-        avg_mood * 10 +
-        (10 - avg_stress) * 10 +
-        avg_energy * 10 +
-        avg_productivity * 10 +
-        max(0, (10 - avg_screen)) * 5
-    )
-
-    overall_score = min(100, round(score / 5.5))
+    exercise_days = int((recent["ExerciseMinutes"] > 0).sum())
 
     # ------------------------
-    # Biggest Win
+    # Overall AI Score (proportional based on available factors)
+    # ------------------------
+
+    score_components = []
+    max_components = 0.0
+
+    if avg_sleep is not None and not pd.isna(avg_sleep):
+        score_components.append(avg_sleep * 10)
+        max_components += 100.0
+
+    if avg_mood is not None and not pd.isna(avg_mood):
+        score_components.append(avg_mood * 10)
+        max_components += 100.0
+
+    if avg_stress is not None and not pd.isna(avg_stress):
+        score_components.append((10 - avg_stress) * 10)
+        max_components += 100.0
+
+    if avg_energy is not None and not pd.isna(avg_energy):
+        score_components.append(avg_energy * 10)
+        max_components += 100.0
+
+    if avg_productivity is not None and not pd.isna(avg_productivity):
+        score_components.append(avg_productivity * 10)
+        max_components += 100.0
+
+    if avg_screen is not None and not pd.isna(avg_screen):
+        score_components.append(max(0, (10 - avg_screen)) * 5)
+        max_components += 50.0
+
+    if max_components > 0:
+        overall_score = min(100, round((sum(score_components) / max_components) * 100))
+    else:
+        overall_score = 0
+
+    # ------------------------
+    # Biggest Win (from available factors)
     # ------------------------
 
     values = {
@@ -42,8 +66,12 @@ def generate_monthly_report(data):
         "Energy": avg_energy,
         "Productivity": avg_productivity
     }
+    available_values = {k: v for k, v in values.items() if v is not None and not pd.isna(v)}
 
-    biggest_win = max(values, key=values.get)
+    if available_values:
+        biggest_win = max(available_values, key=available_values.get)
+    else:
+        biggest_win = "Sleep"
 
     # ------------------------
     # Biggest Challenge
@@ -53,20 +81,24 @@ def generate_monthly_report(data):
         "Stress": avg_stress,
         "Screen Time": avg_screen,
     }
+    available_challenges = {k: v for k, v in challenges.items() if v is not None and not pd.isna(v)}
 
-    challenge = max(challenges, key=challenges.get)
+    if available_challenges:
+        challenge = max(available_challenges, key=available_challenges.get)
+    else:
+        challenge = "Screen Time"
 
     # ------------------------
     # Biggest Opportunity
     # ------------------------
 
-    if avg_energy < 6:
+    if avg_energy is not None and not pd.isna(avg_energy) and avg_energy < 6:
         opportunity = "Improve your daily energy."
 
-    elif avg_sleep < 7:
+    elif avg_sleep is not None and not pd.isna(avg_sleep) and avg_sleep < 7:
         opportunity = "Improve your sleep schedule."
 
-    elif avg_stress > 6:
+    elif avg_stress is not None and not pd.isna(avg_stress) and avg_stress > 6:
         opportunity = "Reduce daily stress."
 
     else:

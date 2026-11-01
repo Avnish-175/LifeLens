@@ -1,4 +1,4 @@
-from src.data_manager import save_data, load_data
+from src.data_manager import save_data, load_data, normalize_date_series
 import streamlit as st
 import math
 import pandas as pd
@@ -77,10 +77,13 @@ def confirm_overwrite(new_entry, date):
 
     with col2:
         if st.button("Yes, Overwrite", use_container_width=True):
-            save_data(new_entry)
-            st.session_state["pending_overwrite"] = None
-            st.session_state["checkin_success_message"] = "Check-in overwritten successfully."
-            st.rerun()
+            try:
+                save_data(new_entry)
+                st.session_state["pending_overwrite"] = None
+                st.session_state["checkin_success_message"] = "Check-in overwritten successfully."
+                st.rerun()
+            except Exception as e:
+                st.error(f"Failed to overwrite check-in: {e}")
 
 check_data_file()
 st.set_page_config(
@@ -125,26 +128,26 @@ show_hero(greeting, today)
 data = load_data()
 
 if not data.empty:
-    # Parse dates stored in either supported format.
-    date_values = data["Date"].astype("string").str.strip()
+    data = data.copy()
+    if "Date" in data.columns:
+        normalized_dates = normalize_date_series(data["Date"])
+        data["Date"] = pd.to_datetime(normalized_dates, errors="coerce")
+        data = data.dropna(subset=["Date"]).sort_values("Date")
+        data = data.drop_duplicates(subset=["Date"], keep="last")
 
-    parsed_dates = pd.to_datetime(
-        date_values,
-        format="%Y-%m-%d",
-        errors="coerce"
-    )
-
-    # Retry dates in day-month-year format.
-    missing_dates = parsed_dates.isna()
-
-    parsed_dates.loc[missing_dates] = pd.to_datetime(
-        date_values.loc[missing_dates],
-        format="%d-%m-%Y",
-        errors="coerce"
-    )
-
-    data["Date"] = parsed_dates
-    data = data.dropna(subset=["Date"]).sort_values("Date")
+    numeric_columns = [
+        "SleepHours",
+        "ScreenTime",
+        "ExerciseMinutes",
+        "StudyHours",
+        "Mood",
+        "Energy",
+        "Stress",
+        "Productivity"
+    ]
+    for col in numeric_columns:
+        if col in data.columns:
+            data[col] = pd.to_numeric(data[col], errors="coerce")
 
 
 
@@ -437,15 +440,7 @@ if selected_tab == "📝 Daily Check-in":
             date_string = pd.to_datetime(date).strftime("%Y-%m-%d")
 
             if not existing_data.empty:
-                s = existing_data["Date"].astype(str).str.strip()
-                p = pd.to_datetime(s, format="%Y-%m-%d", errors="coerce")
-                missing_m = p.isna()
-                if missing_m.any():
-                    p.loc[missing_m] = pd.to_datetime(s.loc[missing_m], format="%d-%m-%Y", errors="coerce")
-                still_m = p.isna()
-                if still_m.any():
-                    p.loc[still_m] = pd.to_datetime(s.loc[still_m], format="mixed", errors="coerce")
-                existing_dates = p.dt.strftime("%Y-%m-%d")
+                existing_dates = normalize_date_series(existing_data["Date"])
             else:
                 existing_dates = pd.Series(dtype="object")
 
@@ -453,13 +448,16 @@ if selected_tab == "📝 Daily Check-in":
                 st.session_state["pending_overwrite"] = new_entry
                 confirm_overwrite(new_entry, date_string)
             else:
-                save_data(new_entry)
+                try:
+                    save_data(new_entry)
 
-                data = load_data()
+                    data = load_data()
 
-                st.success("Your daily check-in has been saved.")
-                st.subheader("Today's Entry")
-                st.dataframe(new_entry, use_container_width=True)
+                    st.success("Your daily check-in has been saved.")
+                    st.subheader("Today's Entry")
+                    st.dataframe(new_entry, use_container_width=True)
+                except Exception as e:
+                    st.error(f"Unable to save check-in: {e}")
 
     
     with st.expander("View Raw Data"):
@@ -469,6 +467,18 @@ if selected_tab == "📝 Daily Check-in":
     
     
 if selected_tab == "🏠 Dashboard":
+
+    if data.empty:
+        st.markdown("## 🌱 Welcome to LifeLens")
+        st.markdown(
+            "Your personal wellness journey starts with your first check-in."
+        )
+        st.info(
+            "📋 No check-in data has been recorded yet. "
+            "Go to **📝 Daily Check-in** and complete your first entry "
+            "to unlock your personalised dashboard."
+        )
+        st.stop()
     
     
     st.markdown("### Explore your dashboard")
@@ -653,45 +663,73 @@ if selected_tab == "🏠 Dashboard":
     # -----------------------------
 
     # Sleep
-    if summary["avg_sleep"] >= 8:
+    avg_sleep = summary.get("avg_sleep") if summary else None
+    if avg_sleep is None or (isinstance(avg_sleep, float) and math.isnan(avg_sleep)):
+        sleep_status = "No Data"
+        sleep_display = "-- hrs"
+    elif avg_sleep >= 8:
         sleep_status = "Excellent Sleep"
-    elif summary["avg_sleep"] >= 7:
+        sleep_display = f"{avg_sleep} hrs"
+    elif avg_sleep >= 7:
         sleep_status = "Healthy Average"
+        sleep_display = f"{avg_sleep} hrs"
     else:
         sleep_status = "Needs Improvement"
+        sleep_display = f"{avg_sleep} hrs"
 
     # Mood
-    if summary["avg_mood"] >= 8:
+    avg_mood = summary.get("avg_mood") if summary else None
+    if avg_mood is None or (isinstance(avg_mood, float) and math.isnan(avg_mood)):
+        mood_status = "Not Recorded"
+        mood_display = "--/10"
+    elif avg_mood >= 8:
         mood_status = "Excellent Mood"
-    elif summary["avg_mood"] >= 6:
+        mood_display = f"{avg_mood}/10"
+    elif avg_mood >= 6:
         mood_status = "Moderately Positive"
+        mood_display = f"{avg_mood}/10"
     else:
         mood_status = "Needs Attention"
+        mood_display = f"{avg_mood}/10"
 
     # Stress (lower is better)
-    if summary["avg_stress"] <= 3:
+    avg_stress = summary.get("avg_stress") if summary else None
+    if avg_stress is None or (isinstance(avg_stress, float) and math.isnan(avg_stress)):
+        stress_status = "Not Recorded"
+        stress_display = "--/10"
+    elif avg_stress <= 3:
         stress_status = "Very Low Stress"
-    elif summary["avg_stress"] <= 5:
+        stress_display = f"{avg_stress}/10"
+    elif avg_stress <= 5:
         stress_status = "Manageable Stress"
+        stress_display = f"{avg_stress}/10"
     else:
         stress_status = "High Stress"
+        stress_display = f"{avg_stress}/10"
 
-    if wellness_score >= 85 :
+    # Wellness
+    if wellness_score is None or (isinstance(wellness_score, float) and math.isnan(wellness_score)):
+        wellness_status = "Insufficient Data"
+        wellness_display = "Not Available"
+    elif wellness_score >= 85:
         wellness_status = "Excellent Overall"
+        wellness_display = f"{round(wellness_score)}/100"
     elif wellness_score >= 70:
         wellness_status = "Healthy Overall"
+        wellness_display = f"{round(wellness_score)}/100"
     elif wellness_score >= 55:
         wellness_status = "Fair Overall"
+        wellness_display = f"{round(wellness_score)}/100"
     else:
         wellness_status = "Needs Attention"
-
+        wellness_display = f"{round(wellness_score)}/100"
 
     col1, col2, col3, col4 = st.columns(4)
     cards = [
         {
             "icon": "🌱",
             "title": "Wellness",
-            "value": f"{round(wellness_score)}/100",
+            "value": wellness_display,
             "subtitle": wellness_status,
             "accent": "#10B981",
             "background": "#E0F2FE"
@@ -699,7 +737,7 @@ if selected_tab == "🏠 Dashboard":
         {
             "icon": "😴",
             "title": "Sleep",
-            "value": f'{summary["avg_sleep"]} hrs',
+            "value": sleep_display,
             "subtitle": sleep_status,
             "accent": "#6366F1",
             "background": "#EDE9FE"
@@ -707,7 +745,7 @@ if selected_tab == "🏠 Dashboard":
         {
             "icon": "😊",
             "title": "Mood",
-            "value": f'{summary["avg_mood"]}/10',
+            "value": mood_display,
             "subtitle": mood_status,
             "accent": "#F59E0B",
             "background": "#CCFBF1"
@@ -715,7 +753,7 @@ if selected_tab == "🏠 Dashboard":
         {
             "icon": "😌",
             "title": "Stress",
-            "value": f'{summary["avg_stress"]}/10',
+            "value": stress_display,
             "subtitle": stress_status,
             "accent": "#EF4444",
             "background": "#FEF3C7"
