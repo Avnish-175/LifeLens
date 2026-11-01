@@ -24,6 +24,6 @@ Desktop.ini
 .DS_Store
 
 # Large datasets or trained checkpoints if needed (uncomment if very large)
-# models/*.pkl
-# models/*.joblib
+models/*.pkl
+models/*.joblib
 
