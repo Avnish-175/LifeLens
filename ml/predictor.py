@@ -2,10 +2,10 @@
 import os
 import joblib
 import pandas as pd
-
+from src.wellness_score import calculate_wellness_score
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_DIR = os.path.join(BASE_DIR, "models")
+MODEL_DIR = os.path.join(BASE_DIR, "ml", "models")
 
 
 MODEL_FILES = {
