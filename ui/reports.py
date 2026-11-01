@@ -207,14 +207,14 @@ def _generate_historical_insights(filtered_data, period_label):
         }
     else:
         needs_attention_item = {
-            "title": "⬇️ Needs Attention",
+            "title": "✓ Stable",
             "metric_title": "All Resilient",
             "from_to": "Healthy levels",
             "delta": "✓ None",
             "delta_color": "#059669",
             "bg_tint": "rgba(5, 150, 105, 0.05)",
             "border_color": "#A7F3D0",
-            "explanation": "None of your tracked habits or reflection metrics experienced a decline."
+            "explanation": "No tracked metrics experienced a meaningful decline during this period."
         }
 
     # 3. Biggest Pattern (Largest relative shift)
