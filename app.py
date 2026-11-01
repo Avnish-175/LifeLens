@@ -46,11 +46,11 @@ from src.weekly_report import generate_weekly_report
 from src.correlation import get_correlation_matrix
 from src.monthly_report import generate_monthly_report
 from src.forecast import (
-    predict_next_day,
     generate_forecast_summary,
     generate_forecast_explanation,
     generate_ai_forecast_insight
 )
+from ml.predictor import predict_next_day_ml, ml_available
 from src.intelligence import (
     get_biggest_discovery,
     get_todays_focus
@@ -161,6 +161,7 @@ radar_chart = create_wellness_radar_chart(score_breakdown)
 summary = None
 insights = []
 trend_analysis = None
+ml_prediction = None
 
 
 if not data.empty:
@@ -228,7 +229,18 @@ if not data.empty:
     monthly_report = generate_monthly_report(data)
     correlation_matrix = get_correlation_matrix(data)
 
-    prediction = predict_next_day(data)
+    # =========================================================
+    # TOMORROW'S ML FORECAST
+    # =========================================================
+    prediction = {}
+
+    if ml_available():
+        try:
+            prediction = predict_next_day_ml(data)
+        except Exception as error:
+            print("ML forecast unavailable:", repr(error))
+            prediction = {}
+
     biggest_discovery = get_biggest_discovery(data)
     next_step = get_todays_focus(data)
     today_focus = get_todays_focus(data)
@@ -617,10 +629,47 @@ if selected_tab == "🏠 Dashboard":
             )
             t_score_str = f"{round(t_score)}" if t_score is not None else "--"
             
-            p_sleep = f"{prediction['SleepHours']}h" if prediction.get("SleepHours") is not None else "--"
-            p_mood = f"{prediction['Mood']}/10" if prediction.get("Mood") is not None else "--"
-            p_stress = f"{prediction['Stress']}/10" if prediction.get("Stress") is not None else "--"
-            p_screen = f"{prediction['ScreenTime']}h" if prediction.get("ScreenTime") is not None else "--"
+            p_sleep = (
+                f"{prediction['SleepHours']}h"
+                if prediction.get("SleepHours") is not None
+                else "--"
+            )
+
+            p_mood = (
+                f"{prediction['Mood']}/10"
+                if prediction.get("Mood") is not None
+                else "--"
+            )
+
+            p_stress = (
+                f"{prediction['Stress']}/10"
+                if prediction.get("Stress") is not None
+                else "--"
+            )
+
+            p_screen = (
+                f"{prediction['ScreenTime']}h"
+                if prediction.get("ScreenTime") is not None
+                else "--"
+            )
+
+            p_energy = (
+                f"{prediction['Energy']}/10"
+                if prediction.get("Energy") is not None
+                else "--"
+            )
+
+            p_exercise = (
+                f"{prediction['ExerciseMinutes']} min"
+                if prediction.get("ExerciseMinutes") is not None
+                else "--"
+            )
+
+            p_productivity = (
+                f"{prediction['Productivity']}/10"
+                if prediction.get("Productivity") is not None
+                else "--"
+            )
 
             st.html(
                 f"""
@@ -658,22 +707,40 @@ if selected_tab == "🏠 Dashboard":
                             AI projection based on your recent behavioural momentum.
                         </div>
                     </div>
-                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; background: rgba(0, 0, 0, 0.22); padding: 7px 8px; border-radius: 9px;">
+                    <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 10px; background: rgba(0, 0, 0, 0.22); padding: 7px 8px; border-radius: 9px;">
                         <div style="text-align: center;">
                             <div style="font-size: 11px; color: #C7D2FE;">Sleep</div>
                             <div style="font-size: 13px; font-weight: 700; color: #FFFFFF;">{p_sleep}</div>
                         </div>
+
                         <div style="text-align: center;">
                             <div style="font-size: 11px; color: #C7D2FE;">Mood</div>
                             <div style="font-size: 13px; font-weight: 700; color: #FFFFFF;">{p_mood}</div>
                         </div>
+
                         <div style="text-align: center;">
                             <div style="font-size: 11px; color: #C7D2FE;">Stress</div>
                             <div style="font-size: 13px; font-weight: 700; color: #FFFFFF;">{p_stress}</div>
                         </div>
+
+                        <div style="text-align: center;">
+                            <div style="font-size: 11px; color: #C7D2FE;">Energy</div>
+                            <div style="font-size: 13px; font-weight: 700; color: #FFFFFF;">{p_energy}</div>
+                        </div>
+
+                        <div style="text-align: center;">
+                            <div style="font-size: 11px; color: #C7D2FE;">Exercise</div>
+                            <div style="font-size: 13px; font-weight: 700; color: #FFFFFF;">{p_exercise}</div>
+                        </div>
+
                         <div style="text-align: center;">
                             <div style="font-size: 11px; color: #C7D2FE;">Screen</div>
                             <div style="font-size: 13px; font-weight: 700; color: #FFFFFF;">{p_screen}</div>
+                        </div>
+
+                        <div style="text-align: center;">
+                            <div style="font-size: 11px; color: #C7D2FE;">Productivity</div>
+                            <div style="font-size: 13px; font-weight: 700; color: #FFFFFF;">{p_productivity}</div>
                         </div>
                     </div>
                 </div>
