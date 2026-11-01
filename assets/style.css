@@ -1,0 +1,1968 @@
+.main {
+        padding-top: 1rem;
+    }
+
+    div[data-testid="stMetric"] {
+        background-color: #f8f9fa;
+        border-radius: 12px;
+        padding: 15px;
+        border: 1px solid #e6e6e6;
+    }
+
+    div[data-testid="stAlert"] {
+        border-radius: 12px;
+    }
+
+.stButton>button {
+        border-radius: 10px;
+    }
+
+/* LifeLens hero header */
+
+/* Compact LifeLens brand header */
+.hero-card {
+    background: linear-gradient(135deg, #0F172A, #1E3A8A);
+    padding: 22px 30px;
+    border-radius: 18px;
+    color: white;
+    margin-bottom: 12px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16);
+}
+
+.hero-title {
+    margin: 0 0 5px 0;
+    font-size: 34px;
+    line-height: 1.25;
+    font-weight: 750;
+    color: white;
+}
+
+.hero-subtitle {
+    margin: 0;
+    color: #CBD5E1;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+.hero-welcome {
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    padding-top: 12px;
+}
+
+.hero-greeting {
+    margin: 0;
+    font-size: 24px;
+    color: white;
+}
+
+.hero-description {
+    font-size: 17px;
+    margin: 8px 0;
+    color: white;
+}
+
+.hero-date {
+    font-size: 15px;
+    color: #CBD5E1;
+    margin: 0;
+}
+
+
+.discovery-card {
+    background: #FFFFFF;
+    border-left: 5px solid #2563EB;
+    border-radius: 14px;
+    padding: 22px 26px;
+    margin-top: 8px;
+    margin-bottom: 18px;
+    box-shadow: 0 3px 14px rgba(15, 23, 42, 0.06);
+}
+
+.discovery-title {
+    margin-top: 0;
+    margin-bottom: 12px;
+    color: #1E3A8A;
+    font-size: 25px;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.discovery-text {
+    font-size: 18px;
+    color: #334155;
+    line-height: 1.65;
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.action-card{
+    padding:18px;
+    border-radius:12px;
+    background:#F8FAFC;
+    border-left:6px solid #2563EB;
+    margin-bottom:20px;
+}
+
+.action-title{
+    margin:0;
+    color:#2563EB;
+}
+
+.action-text{
+    font-size:18px;
+    margin-top:12px;
+    margin-bottom:0;
+}
+.insight-card{
+    background:white;
+    padding:18px;
+    border-radius:16px;
+    border-left:6px solid;
+    box-shadow:0 2px 10px rgba(0,0,0,.06);
+    margin-bottom:18px;
+}
+
+.insight-title{
+    font-size:20px;
+    font-weight:700;
+    margin-bottom:8px;
+}
+
+.insight-message{
+    font-size:15px;
+    color:#475569;
+    line-height:1.6;
+    margin-bottom:14px;
+}
+
+.insight-badge{
+    padding:6px 12px;
+    border-radius:999px;
+    font-size:13px;
+    font-weight:600;
+    display:inline-block;
+}
+
+/* Behaviour Summary — Metric Cards */
+.stat-card {
+    background: #FFFFFF;
+    padding: 22px;
+    border-radius: 15px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 3px 12px rgba(15, 23, 42, 0.05);
+    height: 170px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+
+.stat-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.stat-icon {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    flex: 0 0 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    line-height: 1;
+}
+
+.stat-title {
+    font-size: 15px;
+    font-weight: 650;
+    color: #334155;
+}
+
+.stat-value {
+    font-size: 42px;
+    font-weight: 750;
+    color: #172554;
+    line-height: 1.1;
+    margin-top: 8px;
+}
+
+.stat-subtitle {
+    font-size: 13px;
+    color: #64748B;
+    line-height: 1.4;
+}
+
+
+.forecast-card{
+    background:linear-gradient(135deg,#ECFDF5,#F0FDF4);
+    padding:28px;
+    border-radius:20px;
+    border:1px solid #BBF7D0;
+    margin-bottom:25px;
+    box-shadow:0 4px 18px rgba(0,0,0,.06);
+}
+
+.forecast-label{
+    font-size:14px;
+    font-weight:600;
+    color:#059669;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    margin-bottom:10px;
+}
+
+.forecast-title{
+    font-size:30px;
+    font-weight:700;
+    color:#065F46;
+    margin-bottom:12px;
+}
+
+.forecast-description{
+    font-size:16px;
+    color:#374151;
+    line-height:1.7;
+}
+
+
+.ai-insight-label{
+    font-size:13px;
+    font-weight:700;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    color:#2563EB;
+    margin-bottom:12px;
+}
+
+.ai-insight-text{
+    font-size:17px;
+    line-height:1.8;
+    color:#1F2937;
+}
+.best-action-card{
+    background:#F9FAFB;
+    padding:22px;
+    border-radius:18px;
+    border-left:6px solid #10B981;
+    box-shadow:0 3px 12px rgba(0,0,0,.05);
+}
+
+.best-action-label{
+    font-size:13px;
+    font-weight:700;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    color:#10B981;
+    margin-bottom:12px;
+}
+
+.best-action-text{
+    font-size:17px;
+    line-height:1.8;
+    color:#1F2937;
+}
+
+/* AI Relationship Insight Cards */
+.correlation-card {
+    background: #F8FAFC;
+    padding: 24px;
+    border-radius: 16px;
+    border: 1px solid #E2E8F0;
+    min-height: 260px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 3px 12px rgba(15, 23, 42, 0.04);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.correlation-card:hover {
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+    transform: translateY(-2px);
+}
+
+.correlation-title {
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 16px;
+}
+
+.correlation-features {
+    font-size: 21px;
+    font-weight: 700;
+    color: #1E293B;
+    margin-bottom: 8px;
+}
+
+.correlation-bar {
+    background: #E2E8F0;
+    height: 9px;
+    border-radius: 999px;
+    overflow: hidden;
+    margin: 14px 0;
+}
+
+.correlation-progress {
+    height: 100%;
+    border-radius: 999px;
+}
+
+.correlation-strength {
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 16px;
+}
+
+.correlation-text {
+    font-size: 14px;
+    line-height: 1.7;
+    color: #475569;
+}
+
+/* Weekly Snapshot */
+
+.weekly-card {
+    background: white;
+    padding: 22px;
+    border-radius: 18px;
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+    margin-bottom: 22px;
+}
+
+.weekly-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #6366F1;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+}
+
+.weekly-headline {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1F2937;
+    margin-bottom: 18px;
+}
+
+.weekly-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.weekly-stat {
+    background: white;
+    padding: 16px;
+    border-radius: 14px;
+    border: 1px solid #E5E7EB;
+    text-align: center;
+}
+
+.weekly-stat-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #374151;
+    margin-bottom: 9px;
+}
+
+.weekly-stat-value {
+    font-size: 21px;
+    font-weight: 800;
+}
+.sleep-good{
+    color:#16A34A;
+}
+
+.mood-stable{
+    color:#2563EB;
+}
+
+.stress-high{
+    color:#F59E0B;
+}
+
+.energy-low{
+    color:#DC2626;
+}
+
+.weekly-takeaway{
+    padding:16px;
+    background:#EEF6FF;
+    border-left:5px solid #3B82F6;
+    border-radius:12px;
+    font-size:16px;
+    color:#374151;
+}
+.monthly-score-card {
+    background: linear-gradient(135deg, #F8FAFC, #FFFFFF);
+    padding: 18px 22px;
+    border-radius: 14px;
+    border: 1px solid #E2E8F0;
+    margin-bottom: 0;
+}
+
+.monthly-score-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #2563EB;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+}
+
+.monthly-score-value {
+    font-size: 38px;
+    font-weight: 800;
+    margin-top: 7px;
+    color: #0F172A;
+}
+/* ============================= */
+/* Navigation */
+/* ============================= */
+
+div[data-testid="stSegmentedControl"]{
+    margin-top:20px;
+    margin-bottom:30px;
+}
+
+div[data-testid="stSegmentedControl"] > div{
+    background:#F8FAFC;
+    border-radius:18px;
+    padding:8px;
+    border:1px solid #E2E8F0;
+    box-shadow:0 8px 25px rgba(15,23,42,.06);
+}
+
+/* ============================
+   LIFE LENS NAVIGATION PILLS
+============================ */
+
+
+/* =========================================
+   LIFELENS — PRIMARY NAVIGATION PILLS
+========================================= */
+
+button[data-variant="pills"] {
+    min-height: 56px !important;
+    min-width: 175px !important;
+    padding: 12px 24px !important;
+
+    border-radius: 14px !important;
+    border: 1px solid #DCE5F2 !important;
+
+    background: #FFFFFF !important;
+    color: #334155 !important;
+
+    font-size: 16px !important;
+    font-weight: 600 !important;
+
+    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.05);
+
+    transition:
+        background-color 0.2s ease,
+        color 0.2s ease,
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        transform 0.2s ease !important;
+}
+
+/* Hover state */
+button[data-variant="pills"]:hover {
+    background: #EFF6FF !important;
+    border-color: #93B4F5 !important;
+    color: #1E3A8A !important;
+
+    box-shadow: 0 5px 14px rgba(30, 58, 138, 0.10);
+    transform: translateY(-1px);
+}
+
+/* Active page */
+button[data-variant="pills"][data-selected="true"] {
+    background: #1E3A8A !important;
+    color: #FFFFFF !important;
+    border: 1px solid #1E3A8A !important;
+
+    box-shadow: 0 5px 14px rgba(30, 58, 138, 0.18);
+}
+
+/* Keyboard accessibility */
+button[data-variant="pills"]:focus-visible {
+    outline: 3px solid #93C5FD !important;
+    outline-offset: 3px !important;
+}
+
+
+
+/* =========================================
+   LIFELENS — STICKY NAVIGATION
+========================================= */
+
+.st-key-lifelens_navigation {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 9999 !important;
+
+    background: rgba(255, 255, 255, 0.97);
+    padding: 8px 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 8px !important;
+
+    border-bottom: 1px solid #E2E8F0;
+    backdrop-filter: blur(10px);
+}
+
+/* Dashboard quick-navigation links */
+.dashboard-jump-link {
+    display: block;
+    text-decoration: none !important;
+    border-radius: 9px;
+    transition: background-color 0.2s ease,
+                border-color 0.2s ease,
+                box-shadow 0.2s ease,
+                transform 0.2s ease;
+}
+
+.dashboard-jump-link:hover {
+    background-color: #E8F0FF;
+    border-color: #2446A8;
+    box-shadow: 0 3px 10px rgba(36, 70, 168, 0.16);
+    transform: translateY(-2px);
+}
+
+.dashboard-jump-link:active {
+    background-color: #D6E4FF;
+    transform: translateY(0);
+}
+
+/* Compact supporting actions */
+
+/* Supporting Actions */
+.supporting-action-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    margin: 8px 0;
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    background: #F8FAFC;
+    color: #334155;
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+.supporting-action-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 21px;
+    height: 21px;
+    border-radius: 50%;
+    background: #DCFCE7;
+    color: #15803D;
+    font-weight: 700;
+    font-size: 12px;
+}
+
+/* AI Insight */
+/* Tomorrow's unified panel */
+.ai-insight-card {
+    background: #F1F5F9;
+    padding: 20px 22px;
+    border-radius: 12px 12px 0 0;
+    border-left: 5px solid #2563EB;
+    margin-bottom: 0 !important;
+    box-shadow: none;
+    border-bottom: 0;
+}
+
+.best-action-card {
+    background: #F1F5F9;
+    padding: 18px 22px;
+    border-radius: 0 0 12px 12px;
+    border-left: 5px solid #0F766E;
+    margin-top: 0 !important;
+    box-shadow: none;
+    border-top: 0;
+}
+
+/* Shared text styling */
+.ai-insight-card .ai-insight-text,
+.best-action-card .best-action-text {
+    font-size: 15px;
+    color: #334155;
+    line-height: 1.7;
+    margin-bottom: 0;
+}
+
+.best-action-card .best-action-label {
+    margin-bottom: 9px;
+    color: #0F766E;
+}
+
+/* =========================================
+   LIFELENS — DAILY CHECK-IN
+   Professional, accessible styling
+========================================= */
+
+div[data-testid="stForm"] {
+    background: #FFFFFF !important;
+    border: 1px solid #D7E0EB !important;
+    border-radius: 14px !important;
+    padding: 28px !important;
+}
+
+/* Section headings */
+div[data-testid="stForm"] h2,
+div[data-testid="stForm"] h3 {
+    color: #17365D !important;
+    font-size: 25px !important;
+    font-weight: 700 !important;
+    line-height: 1.4 !important;
+    margin-top: 10px !important;
+    margin-bottom: 22px !important;
+}
+
+/* Clear, readable question labels */
+div[data-testid="stForm"] label {
+    color: #24364B !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    line-height: 1.5 !important;
+}
+
+/* Input controls */
+div[data-testid="stForm"] input,
+div[data-testid="stForm"] textarea,
+div[data-testid="stForm"] div[data-baseweb="select"] > div {
+    background: #FFFFFF !important;
+    color: #1F2937 !important;
+    border: 1px solid #B8C8DA !important;
+    border-radius: 8px !important;
+    font-size: 16px !important;
+}
+
+/* Comfortable control sizes */
+div[data-testid="stForm"] input {
+    min-height: 44px;
+}
+
+div[data-testid="stForm"] div[data-baseweb="select"] > div {
+    min-height: 46px !important;
+}
+
+/* Reflection area */
+div[data-testid="stForm"] textarea {
+    min-height: 125px !important;
+    padding: 12px !important;
+    line-height: 1.6 !important;
+}
+
+/* Focus state for keyboard and accessibility */
+div[data-testid="stForm"] input:focus,
+div[data-testid="stForm"] textarea:focus {
+    border-color: #2563EB !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+}
+
+/* Primary save action */
+div[data-testid="stForm"] button[kind="primaryFormSubmit"] {
+    min-height: 50px !important;
+    background: #1E3A8A !important;
+    color: #FFFFFF !important;
+    border: 1px solid #1E3A8A !important;
+    border-radius: 8px !important;
+    font-size: 16px !important;
+    font-weight: 650 !important;
+}
+
+div[data-testid="stForm"] button[kind="primaryFormSubmit"]:hover {
+    background: #172F70 !important;
+    border-color: #172F70 !important;
+}
+
+/* Helper text */
+div[data-testid="stForm"] [data-testid="stCaptionContainer"] {
+    color: #52657B !important;
+    font-size: 14px !important;
+    line-height: 1.6 !important;
+}
+
+/* Consistent space between fields */
+div[data-testid="stForm"] div[data-testid="stSlider"],
+div[data-testid="stForm"] div[data-testid="stNumberInput"],
+div[data-testid="stForm"] div[data-testid="stSelectbox"] {
+    margin-bottom: 12px !important;
+}
+
+/* =========================================
+   LIFELENS — CHECK-IN LAYOUT REFINEMENT
+========================================= */
+
+/* More readable form labels */
+div[data-testid="stForm"] [data-testid="stWidgetLabel"] p {
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    color: #24364B !important;
+    line-height: 1.45 !important;
+    margin-bottom: 5px !important;
+}
+
+/* Reduce excessive vertical gaps between controls */
+div[data-testid="stForm"] div[data-testid="stSlider"],
+div[data-testid="stForm"] div[data-testid="stNumberInput"],
+div[data-testid="stForm"] div[data-testid="stSelectbox"] {
+    margin-bottom: 3px !important;
+}
+
+/* Compact but readable section headings */
+div[data-testid="stForm"] h2,
+div[data-testid="stForm"] h3 {
+    font-size: 24px !important;
+    margin-top: 4px !important;
+    margin-bottom: 12px !important;
+}
+
+/* Keep optional reflection close to the questions */
+div[data-testid="stForm"] textarea {
+    min-height: 100px !important;
+}
+
+/* Reduce unnecessary space before the reflection heading */
+div[data-testid="stForm"] [data-testid="stVerticalBlock"] {
+    gap: 0.8rem;
+}
+
+/* =========================================
+   LIFELENS — DAILY CHECK-IN
+   Professional analytics design
+   ========================================= */
+
+/* Main page heading */
+h1 {
+    color: #142D4E;
+    font-size: 2.25rem !important;
+    font-weight: 750 !important;
+    line-height: 1.25 !important;
+    letter-spacing: -0.035em;
+    margin-bottom: 0.45rem !important;
+}
+
+/* Introductory text directly below headings */
+h1 + div p,
+h1 + p {
+    color: #475569;
+    font-size: 1.05rem !important;
+    line-height: 1.65 !important;
+}
+
+/* Main check-in form container */
+div[data-testid="stForm"] {
+    background: #FFFFFF;
+    border: 1px solid #D6E0EC;
+    border-radius: 16px;
+    padding: 24px !important;
+    box-shadow: 0 4px 14px rgba(20, 45, 78, 0.055);
+}
+
+/* Date label and other form labels */
+div[data-testid="stForm"] [data-testid="stWidgetLabel"] p {
+    color: #203653 !important;
+    font-size: 1rem !important;
+    font-weight: 650 !important;
+    line-height: 1.5 !important;
+}
+
+/* Date picker and text inputs */
+div[data-testid="stForm"] input,
+div[data-testid="stForm"] textarea {
+    font-size: 1rem !important;
+    color: #26364A !important;
+    border-radius: 9px !important;
+}
+
+/* Date field */
+div[data-testid="stForm"] input[ type="date" ] {
+    min-height: 48px;
+}
+
+/* Habit and reflection panels */
+.st-key-daily_habits_panel,
+.st-key-personal_reflections_panel {
+    background: #FFFFFF;
+    border: 1px solid #C8D6E6;
+    border-radius: 14px;
+    padding: 22px !important;
+    min-height: 100%;
+    box-shadow: 0 3px 10px rgba(20, 45, 78, 0.045);
+}
+
+/* Panel headings */
+.st-key-daily_habits_panel h3,
+.st-key-personal_reflections_panel h3,
+.st-key-optional_reflection_panel h3 {
+    color: #17365D !important;
+    font-size: 1.45rem !important;
+    font-weight: 750 !important;
+    line-height: 1.4 !important;
+    letter-spacing: -0.02em;
+    margin-top: 0 !important;
+    margin-bottom: 12px !important;
+}
+
+/* Supporting text */
+.st-key-daily_habits_panel [data-testid="stCaptionContainer"],
+.st-key-personal_reflections_panel [data-testid="stCaptionContainer"],
+.st-key-optional_reflection_panel [data-testid="stCaptionContainer"] {
+    color: #475569 !important;
+    font-size: 0.95rem !important;
+    line-height: 1.65 !important;
+}
+
+/* Consistent dropdown sizing */
+div[data-testid="stForm"] div[data-baseweb="select"] > div {
+    min-height: 48px;
+    background: #FFFFFF;
+    border-radius: 9px;
+    border-color: #C7D3E0;
+}
+
+/* Number input controls */
+div[data-testid="stForm"] div[data-testid="stNumberInput"] input {
+    min-height: 44px;
+}
+
+/* Clear keyboard focus */
+div[data-testid="stForm"] input:focus,
+div[data-testid="stForm"] textarea:focus {
+    border-color: #1D4ED8 !important;
+    box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.16) !important;
+}
+
+/* Sleep slider accent */
+div[data-testid="stForm"] div[data-testid="stSlider"] [role="slider"] {
+    background-color: #1D4ED8 !important;
+}
+
+/* Optional note field */
+.st-key-optional_reflection_panel textarea {
+    min-height: 120px !important;
+    line-height: 1.6 !important;
+}
+
+/* Save button */
+div[data-testid="stForm"] button[kind="primaryFormSubmit"] {
+    min-height: 52px;
+    border-radius: 9px;
+    font-size: 1.05rem !important;
+    font-weight: 700 !important;
+    padding: 0.75rem 1.25rem;
+}
+
+/* Smaller screens: preserve readable sizing and avoid cramped panels */
+@media (max-width: 768px) {
+    div[data-testid="stForm"] {
+        padding: 14px !important;
+    }
+
+    .st-key-daily_habits_panel,
+    .st-key-personal_reflections_panel {
+        padding: 16px !important;
+    }
+
+    h1 {
+        font-size: 1.8rem !important;
+    }
+}
+
+/* =========================================
+   LifeLens — readability upgrade
+   ========================================= */
+
+/* Main page title */
+h1 {
+    font-size: 2.6rem !important;
+    font-weight: 750 !important;
+    line-height: 1.25 !important;
+    color: #142D4E !important;
+    margin-bottom: 0.6rem !important;
+}
+
+/* Introductory paragraph below the page title */
+h1 + div p,
+h1 + p {
+    font-size: 1.1rem !important;
+    line-height: 1.7 !important;
+    color: #334155 !important;
+}
+
+/* Panel headings */
+.st-key-daily_habits_panel h3,
+.st-key-personal_reflections_panel h3,
+.st-key-optional_reflection_panel h3 {
+    font-size: 1.6rem !important;
+    font-weight: 750 !important;
+    color: #17365D !important;
+    margin-bottom: 14px !important;
+}
+
+/* Supporting text */
+.st-key-daily_habits_panel [data-testid="stCaptionContainer"],
+.st-key-personal_reflections_panel [data-testid="stCaptionContainer"],
+.st-key-optional_reflection_panel [data-testid="stCaptionContainer"] {
+    font-size: 1rem !important;
+    line-height: 1.65 !important;
+    color: #475569 !important;
+}
+
+/* Form labels, including the date label */
+div[data-testid="stForm"] [data-testid="stWidgetLabel"] p {
+    font-size: 1.05rem !important;
+    font-weight: 650 !important;
+    color: #24364B !important;
+}
+
+/* Make field values easier to read */
+div[data-testid="stForm"] input,
+div[data-testid="stForm"] textarea {
+    font-size: 1rem !important;
+}
+
+/* Keep the title readable on smaller screens */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 2rem !important;
+    }
+
+    .st-key-daily_habits_panel h3,
+    .st-key-personal_reflections_panel h3,
+    .st-key-optional_reflection_panel h3 {
+        font-size: 1.35rem !important;
+    }
+}
+
+/* LifeLens — hero banner contrast fix */
+.hero-card .hero-title {
+    color: #FFFFFF !important;
+    font-size: 36px !important;
+    font-weight: 750 !important;
+    line-height: 1.25 !important;
+}
+
+.hero-card .hero-subtitle {
+    color: #E2E8F0 !important;
+    font-size: 16px !important;
+    line-height: 1.6 !important;
+}
+
+/* Keep welcome text readable on the navy background */
+.hero-card .hero-greeting,
+.hero-card .hero-description {
+    color: #FFFFFF !important;
+}
+
+.hero-card .hero-date {
+    color: #E2E8F0 !important;
+}
+
+/* =========================================
+   LIFELENS — GLOBAL LAYOUT REFINEMENT
+   ========================================= */
+
+/* Reduce excessive space above the main content */
+.stApp .block-container {
+    padding-top: 1.5rem !important;
+    padding-bottom: 2rem !important;
+    padding-left: clamp(1.25rem, 4vw, 3.5rem) !important;
+    padding-right: clamp(1.25rem, 4vw, 3.5rem) !important;
+    max-width: 1600px;
+}
+
+/* Keep the hero banner visually compact and consistent */
+.hero-card {
+    padding: 22px 28px;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    border-radius: 16px;
+}
+
+/* Clear brand typography */
+.hero-card .hero-title {
+    color: #FFFFFF !important;
+    font-size: 2.25rem !important;
+    font-weight: 750 !important;
+    line-height: 1.25 !important;
+    margin-bottom: 0.4rem !important;
+}
+
+.hero-card .hero-subtitle {
+    color: #E2E8F0 !important;
+    font-size: 1rem !important;
+    line-height: 1.5 !important;
+}
+
+/* Consistent heading hierarchy */
+.stApp h1 {
+    color: #142D4E;
+    line-height: 1.25;
+}
+
+.stApp h2 {
+    color: #17365D;
+    line-height: 1.35;
+}
+
+.stApp h3 {
+    color: #17365D;
+    line-height: 1.4;
+}
+
+/* Consistent rounded edges for standard buttons */
+.stApp button {
+    border-radius: 9px;
+}
+
+/* Avoid oversized page padding on smaller screens */
+@media (max-width: 768px) {
+    .stApp .block-container {
+        padding-top: 1rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+
+    .hero-card {
+        padding: 18px 20px;
+        margin-bottom: 1rem;
+    }
+
+    .hero-card .hero-title {
+        font-size: 1.8rem !important;
+    }
+}
+
+/* =========================================
+   LIFELENS — NAVIGATION AND DASHBOARD SPACING
+   ========================================= */
+
+/* Use more of the available browser width */
+
+.stApp .block-container {
+    max-width: 1800px !important;
+    padding-top: 2rem !important;
+    padding-bottom: 1.5rem !important;
+}
+
+
+/* Keep the brand banner prominent but compact */
+
+.hero-card {
+    padding: 26px 30px !important;
+    margin-top: 0.5rem !important;
+    margin-bottom: 1.25rem !important;
+    border-radius: 16px !important;
+    min-height: 112px;
+    box-sizing: border-box;
+}
+
+/* Main navigation buttons */
+div[data-testid="stPills"] button,
+div[data-testid="stSegmentedControl"] button {
+    min-height: 46px !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    border-radius: 10px !important;
+}
+
+/* Dashboard shortcut buttons */
+.stApp button[kind="secondary"] {
+    min-height: 42px;
+    font-size: 15px;
+    font-weight: 550;
+}
+
+/* Clear headings for dashboard sections */
+.stApp h2 {
+    font-size: 1.65rem !important;
+    font-weight: 700 !important;
+    color: #17365D !important;
+    margin-bottom: 0.7rem !important;
+}
+
+/* Keep section spacing consistent */
+
+.stApp hr {
+    margin-top: 1rem !important;
+    margin-bottom: 1rem !important;
+    border-color: #D9E2EC !important;
+}
+
+/* Smaller screens */
+@media (max-width: 768px) {
+    .stApp .block-container {
+        padding-top: 2.5rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+}
+
+/* =========================================
+   LIFELENS — PRIMARY NAVIGATION
+   ========================================= */
+
+/* Give the navigation its own clear space */
+.st-key-lifelens_navigation {
+    margin-top: 1rem;
+    margin-bottom: 1.1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #D9E2EC;
+}
+
+/* Improve the navigation pill text */
+.st-key-lifelens_navigation [data-testid="stPills"] button {
+    min-height: 48px !important;
+    padding: 0.65rem 1.15rem !important;
+    border-radius: 10px !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+/* Inactive navigation tabs */
+.st-key-lifelens_navigation [data-testid="stPills"] button:not(
+    [aria-pressed="true"]
+) {
+    background-color: #FFFFFF !important;
+    color: #334155 !important;
+    border: 1px solid #D5DFEA !important;
+}
+
+/* Active navigation tab */
+.st-key-lifelens_navigation [data-testid="stPills"] button[aria-pressed="true"] {
+    background-color: #1E3A8A !important;
+    color: #FFFFFF !important;
+    border: 1px solid #1E3A8A !important;
+    box-shadow: 0 2px 5px rgba(30, 58, 138, 0.16);
+}
+
+/* Hover state for inactive tabs */
+.st-key-lifelens_navigation [data-testid="stPills"] button:not(
+    [aria-pressed="true"]
+):hover {
+    background-color: #F1F5F9 !important;
+    border-color: #94A3B8 !important;
+    color: #17365D !important;
+}
+
+
+/* =========================================
+   LIFELENS — NAVIGATION POLISH
+   ========================================= */
+
+/* Main navigation container */
+.st-key-lifelens_navigation {
+    margin-top: 0.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #D9E2EC;
+}
+
+/* Main navigation tabs only */
+.st-key-lifelens_navigation [data-testid="stPills"] button {
+    min-height: 50px !important;
+    padding: 0.7rem 1.1rem !important;
+    border-radius: 10px !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+}
+
+/* Dashboard shortcut buttons */
+.stApp button[kind="secondary"] {
+    min-height: 44px;
+    border-radius: 9px;
+    font-size: 15px;
+    font-weight: 550;
+}
+
+/* Consistent keyboard focus */
+.st-key-lifelens_navigation button:focus-visible,
+.stApp button[kind="secondary"]:focus-visible {
+    outline: 3px solid #93C5FD !important;
+    outline-offset: 2px !important;
+}
+
+/* =========================================
+   LIFELENS — WELLNESS SUMMARY POLISH
+   ========================================= */
+
+/* Overall wellness metric */
+/* Forecast metric cards */
+div[data-testid="stMetric"] {
+    background: #F1F5F9 !important;
+    border: 1px solid #D9E2EC !important;
+    border-radius: 14px !important;
+    padding: 20px 22px !important;
+    min-height: 112px;
+    box-shadow: 0 3px 12px rgba(15, 23, 42, 0.04);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+/* Subtle hover effect */
+div[data-testid="stMetric"]:hover {
+    box-shadow: 0 5px 16px rgba(15, 23, 42, 0.08);
+    transform: translateY(-2px);
+}
+/* Metric label */
+div[data-testid="stMetricLabel"] {
+    color: #475569 !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+}
+
+/* Metric value */
+div[data-testid="stMetricValue"] {
+    color: #17365D !important;
+    font-size: 32px !important;
+    font-weight: 700 !important;
+}
+
+/* Wellness status message */
+div[data-testid="stAlert"] {
+    border-radius: 12px !important;
+    padding: 20px !important;
+    min-height: 76px;
+    display: flex;
+    align-items: center;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+}
+
+/* Score explanation */
+.stApp [data-testid="stCaptionContainer"] {
+    color: #64748B;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+
+/* =========================================
+   LIFELENS — BALANCED WELLNESS SUMMARY
+   ========================================= */
+
+/* Outer summary panel */
+.st-key-wellness_summary {
+    background: #FFFFFF;
+    border: 1px solid #CBD5E1;
+    border-radius: 14px;
+    padding: 18px !important;
+    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.045);
+}
+
+/* Give both columns equal visual treatment */
+.st-key-wellness_summary [data-testid="column"] {
+    min-width: 0;
+}
+
+/* Score card */
+.st-key-wellness_summary [data-testid="stMetric"] {
+    background: #F1F5F9 !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 12px !important;
+    padding: 22px !important;
+    min-height: 118px !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* Score label */
+.st-key-wellness_summary [data-testid="stMetricLabel"] {
+    color: #475569 !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+}
+
+/* Score value */
+.st-key-wellness_summary [data-testid="stMetricValue"] {
+    color: #17365D !important;
+    font-size: 34px !important;
+    font-weight: 700 !important;
+}
+
+/* Status card */
+.st-key-wellness_summary [data-testid="stAlert"] {
+    background: #E8F1FA !important;
+    border: 1px solid #C6D8EA !important;
+    border-radius: 12px !important;
+    min-height: 118px !important;
+    padding: 22px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Status text */
+.st-key-wellness_summary [data-testid="stAlert"] p {
+    color: #17365D !important;
+    font-size: 19px !important;
+    font-weight: 700 !important;
+}
+
+/* Explanation below both cards */
+.st-key-wellness_summary [data-testid="stCaptionContainer"] {
+    color: #52657B !important;
+    font-size: 14px !important;
+    margin-top: 8px;
+}
+
+/* =========================================
+   LIFELENS — WELLNESS OVERVIEW PANELS
+   ========================================= */
+
+.st-key-wellness_chart_panel,
+.st-key-wellness_insights_panel {
+    background: #FFFFFF;
+    border: 1px solid #CBD5E1;
+    border-radius: 14px;
+    padding: 18px !important;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    min-height: 100%;
+}
+
+/* Panel headings */
+.st-key-wellness_chart_panel h4,
+.st-key-wellness_insights_panel h4 {
+    color: #17365D !important;
+    font-size: 19px !important;
+    font-weight: 700 !important;
+    margin-bottom: 12px !important;
+}
+
+/* Insight messages fill the available panel width */
+.st-key-wellness_insights_panel [data-testid="stAlert"] {
+    width: 100%;
+    min-height: 58px;
+    border-radius: 9px !important;
+    padding: 12px 15px !important;
+    margin-bottom: 10px;
+}
+
+/* Readable insight text */
+.st-key-wellness_insights_panel [data-testid="stAlert"] p {
+    font-size: 15px !important;
+    font-weight: 600 !important;
+}
+/* =========================================
+   WELLNESS INSIGHT CARDS
+   ========================================= */
+
+.wellness-insight-card {
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 18px;
+    margin: 12px 0;
+    border-radius: 10px;
+    font-size: 15px;
+    gap: 12px;
+}
+
+.wellness-insight-card span {
+    font-weight: 600;
+}
+
+.wellness-insight-card strong {
+    font-size: 16px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.wellness-insight-card.positive {
+    background: #E8F6EE;
+    border: 1px solid #B8E2C8;
+    color: #166534;
+}
+
+.wellness-insight-card.attention {
+    background: #FFF8DB;
+    border: 1px solid #F0D98A;
+    color: #8A5A00;
+}
+
+/* Personal Action Plan — section spacing */
+.st-key-action_plan_section {
+    margin-top: -12px;
+    padding-bottom: 22px;
+    margin-bottom: 18px;
+    border-bottom: 1px solid #E2E8F0;
+}
+
+/* Supporting Actions — keep it visually connected */
+.supporting-actions-heading {
+    color: #334155;
+    font-size: 18px;
+    font-weight: 650;
+    line-height: 1.4;
+    margin-top: 0;
+    margin-bottom: 6px;
+}
+
+/* Unified Today's Action Plan */
+ .action-plan-unified-card {
+    background: #EFF6FF;
+    border-left: 5px solid #2563EB;
+    border-radius: 12px;
+    padding: 20px 22px;
+    margin-bottom: 8px;
+}
+
+/* Main priority */
+.action-plan-primary-label {
+    color: #2563EB;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    margin-bottom: 10px;
+}
+
+.action-plan-primary-text {
+    color: #26364A;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.65;
+}
+
+/* Supporting actions */
+.action-plan-supporting-section {
+    border-top: 1px solid #D5E1EF;
+    margin-top: 17px;
+    padding-top: 13px;
+}
+
+.action-plan-supporting-title {
+    color: #1E3A8A;
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.action-plan-supporting-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 7px 0;
+    color: #334155;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.action-plan-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 19px;
+    height: 19px;
+    border-radius: 50%;
+    background: #DCFCE7;
+    color: #15803D;
+    font-size: 12px;
+    font-weight: 700;
+    margin-top: 1px;
+}
+
+/* Consistent spacing between dashboard sections */
+#action-section {
+    margin-bottom: 0;
+}
+
+#wellness-section {
+    scroll-margin-top: 24px;
+}
+
+/* Behaviour Summary insight banner */
+div[data-testid="stAlert"] {
+    border-radius: 10px;
+}
+
+/* Behaviour Trends — AI Analysis */
+.trend-insight-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.trend-insight-card {
+    padding: 14px 16px;
+    border-radius: 11px;
+    border-left: 4px solid;
+}
+
+.trend-positive {
+    background: #F0FDF4;
+    border-left-color: #0F766E;
+}
+
+.trend-watch {
+    background: #FFFBEB;
+    border-left-color: #D97706;
+}
+
+.trend-risk {
+    background: #FFF7ED;
+    border-left-color: #EA580C;
+}
+
+.trend-recommendation {
+    background: #EFF6FF;
+    border-left-color: #2563EB;
+}
+
+.trend-insight-label {
+    font-size: 12px;
+    font-weight: 750;
+    letter-spacing: 0.5px;
+    color: #1E3A8A;
+    margin-bottom: 6px;
+}
+
+.trend-insight-text {
+    font-size: 14px;
+    color: #334155;
+    line-height: 1.6;
+}
+
+/* LifeLens — Behaviour Trends tab styling */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 8px;
+    border-bottom: 1px solid #E2E8F0;
+}
+
+.stTabs [data-baseweb="tab"] {
+    color: #475569;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px 14px;
+}
+
+.stTabs [aria-selected="true"] {
+    color: #1E3A8A !important;
+    font-weight: 700;
+}
+
+.stTabs [data-baseweb="tab-highlight"] {
+    background-color: #2563EB !important;
+    height: 3px;
+}
+
+/* Monthly Snapshot - Activity Indicator */
+.monthly-activity {
+    display: inline-block;
+    background: #EFF6FF;
+    color: #1D4ED8;
+    padding: 11px 16px;
+    border-radius: 9px;
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 12px 0 10px;
+}
+.monthly-highlight-card {
+    padding: 16px 18px;
+    border-radius: 13px;
+    min-height: 92px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.monthly-highlight-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 12px rgba(15, 23, 42, 0.08);
+}
+
+.monthly-highlight-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 9px;
+}
+
+.monthly-highlight-message {
+    font-size: 14px;
+    line-height: 1.5;
+    color: #334155;
+}
+
+
+/* =====================================
+   REPORTS - WELLNESS METRIC CARDS
+===================================== */
+
+/* Metric card */
+.st-key-reports_metrics div[data-testid="stMetric"] {
+    font-family: Arial, Helvetica, sans-serif !important;
+    background: #F8FAFC !important;
+    border: 1px solid #DCE5EF !important;
+    border-radius: 13px !important;
+    padding: 15px 17px !important;
+    min-height: 100px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.035);
+    transition: background 0.2s ease, border-color 0.2s ease,
+                box-shadow 0.2s ease;
+}
+
+/* Subtle hover */
+.st-key-reports_metrics div[data-testid="stMetric"]:hover {
+    background: #FFFFFF !important;
+    border-color: #B8CCE3 !important;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+/* Metric labels */
+.st-key-reports_metrics div[data-testid="stMetricLabel"],
+.st-key-reports_metrics div[data-testid="stMetricLabel"] p {
+    font-family: Arial, Helvetica, sans-serif !important;
+    color: #475569 !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+}
+
+/* Metric values */
+.st-key-reports_metrics div[data-testid="stMetricValue"],
+.st-key-reports_metrics div[data-testid="stMetricValue"] div {
+    font-family: Arial, Helvetica, sans-serif !important;
+    color: #17365D !important;
+    font-size: 28px !important;
+    font-weight: 700 !important;
+    font-variant-numeric: normal !important;
+}
+
+
+/* =====================================
+   REPORTS - WEEKLY AND MONTHLY SUMMARIES
+===================================== */
+
+.st-key-reports_weekly_summary,
+.st-key-reports_monthly_summary {
+    background: #F8FAFC !important;
+    border: 1px solid #DCE5EF !important;
+    border-left: 4px solid #4779B5 !important;
+    border-radius: 13px !important;
+    padding: 17px 19px !important;
+    min-height: 215px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.035);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.st-key-reports_weekly_summary:hover,
+.st-key-reports_monthly_summary:hover {
+    box-shadow: 0 5px 14px rgba(15, 23, 42, 0.07);
+    transform: translateY(-2px);
+}
+
+/* Summary headings */
+.st-key-reports_weekly_summary strong,
+.st-key-reports_monthly_summary strong {
+    color: #17365D !important;
+}
+
+/* Summary supporting text */
+.st-key-reports_weekly_summary [data-testid="stCaption"],
+.st-key-reports_monthly_summary [data-testid="stCaption"] {
+    color: #64748B !important;
+    font-size: 12px !important;
+}
+
+/* =====================================
+   REPORTS - CSV DOWNLOAD BUTTON
+===================================== */
+
+.st-key-reports_download button {
+    background: #17365D !important;
+    color: #FFFFFF !important;
+    border: 1px solid #17365D !important;
+    border-radius: 10px !important;
+    min-height: 44px;
+    font-weight: 600 !important;
+    transition: all 0.2s ease;
+}
+
+.st-key-reports_download button:hover {
+    background: #244B78 !important;
+    border-color: #244B78 !important;
+    box-shadow: 0 4px 12px rgba(23, 54, 93, 0.18);
+    transform: translateY(-1px);
+}
+
+.st-key-reports_download button p {
+    color: #FFFFFF !important;
+}
+
+/* =====================================
+   REPORTS - REPORTING PERIOD SELECTOR
+===================================== */
+
+.st-key-reports_period div[data-baseweb="select"] > div {
+    background: #F1F5F9 !important;
+    border: 1.5px solid #C7D5E5 !important;
+    border-radius: 11px !important;
+    min-height: 48px !important;
+    padding: 3px 8px !important;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04) !important;
+    transition: all 0.2s ease;
+}
+
+/* Selected period text */
+.st-key-reports_period div[data-baseweb="select"] span {
+    color: #17365D !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+}
+
+/* Dropdown arrow */
+.st-key-reports_period div[data-baseweb="select"] svg {
+    fill: #23466D !important;
+    color: #23466D !important;
+}
+
+/* Hover effect */
+.st-key-reports_period div[data-baseweb="select"]:hover > div {
+    border-color: #4779B5 !important;
+    background: #F8FAFC !important;
+}
+
+/* Focus effect */
+.st-key-reports_period div[data-baseweb="select"]:focus-within > div {
+    border-color: #4779B5 !important;
+    box-shadow: 0 0 0 3px rgba(71, 121, 181, 0.12) !important;
+}
+
+
+/* =====================================
+   LIFELENS - ABOUT PAGE REDESIGN
+===================================== */
+
+/* Consistent professional typography */
+.about-hero-content,
+.about-section-title,
+.about-text-card,
+.about-feature-card,
+.about-step-card,
+.about-vision-card {
+    font-family: Arial, Helvetica, sans-serif !important;
+}
+
+/* Compact, clean hero section */
+.st-key-about_hero {
+    background: #F1F5F9 !important;
+    border: 1px solid #DCE5EF;
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin-bottom: 24px;
+    box-shadow: none !important;
+}
+
+.about-hero-label {
+    color: #4779B5;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+}
+
+.about-hero-content h1 {
+    color: #17365D !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 30px !important;
+    font-weight: 700 !important;
+    margin: 0 0 8px 0 !important;
+}
+
+.about-hero-content h3 {
+    color: #334155 !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 19px !important;
+    font-weight: 600 !important;
+    margin: 0 0 10px 0 !important;
+}
+
+.about-hero-content p {
+    color: #475569 !important;
+    font-size: 15px !important;
+    line-height: 1.7 !important;
+    max-width: 850px;
+    margin: 0 !important;
+}
+
+/* Section headings */
+.about-section-title {
+    color: #17365D;
+    font-size: 22px;
+    font-weight: 700;
+    margin: 25px 0 13px 0;
+    padding-bottom: 9px;
+    border-bottom: 1px solid #DCE5EF;
+}
+
+/* Overview and Why LifeLens */
+.about-text-card {
+    background: #FFFFFF;
+    border: 1px solid #DCE5EF;
+    border-radius: 10px;
+    padding: 20px 22px;
+    color: #334155;
+    font-size: 15px;
+    line-height: 1.8;
+}
+
+.about-text-card p {
+    color: #334155;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 15px;
+    line-height: 1.8;
+    margin: 0 0 12px 0;
+}
+
+.about-text-card p:last-child {
+    margin-bottom: 0;
+}
+
+/* Feature cards */
+.about-feature-card {
+    background: #FFFFFF;
+    border: 1px solid #DCE5EF;
+    border-radius: 11px;
+    padding: 19px;
+    min-height: 155px;
+    height: 100%;
+    box-shadow: none;
+    transition: border-color 0.2s ease;
+}
+
+.about-feature-card:hover {
+    border-color: #8EADD0;
+}
+
+.about-feature-icon {
+    font-size: 24px;
+    margin-bottom: 12px;
+}
+
+.about-feature-title {
+    color: #17365D;
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.about-feature-description {
+    color: #475569;
+    font-size: 14px;
+    line-height: 1.65;
+}
+
+/* How it works */
+.about-step-card {
+    background: #F8FAFC;
+    border: 1px solid #DCE5EF;
+    border-radius: 10px;
+    padding: 18px 15px;
+    min-height: 135px;
+    height: 100%;
+}
+
+.about-step-number {
+    color: #4779B5;
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.about-step-title {
+    color: #17365D;
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.about-step-description {
+    color: #475569;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+
+/* Vision section */
+.about-vision-card {
+    background: #FFFFFF;
+    border: 1px solid #DCE5EF;
+    border-left: 4px solid #4779B5;
+    border-radius: 11px;
+    padding: 20px 22px;
+    margin-bottom: 20px;
+    box-shadow: none;
+}
+
+.about-vision-card h3 {
+    color: #17365D !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 21px !important;
+    font-weight: 700 !important;
+    margin: 0 0 12px 0 !important;
+}
+
+.about-vision-card p {
+    color: #334155 !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 15px !important;
+    line-height: 1.8 !important;
+    margin: 0 0 10px 0 !important;
+}
+
+.about-vision-footer {
+    color: #4779B5;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-top: 15px;
+}
+/* LifeLens - Floating Back to Top Arrow */
+
+.lifelens-back-to-top {
+    position: fixed;
+    right: 28px;
+    bottom: 28px;
+    z-index: 999999;
+
+    width: 48px;
+    height: 48px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: #17365D;
+    color: #FFFFFF !important;
+
+    border-radius: 50%;
+    text-decoration: none !important;
+
+    font-size: 26px;
+    font-weight: bold;
+
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+}
+
+.lifelens-back-to-top:hover {
+    background: #244A73;
+    color: #FFFFFF !important;
+}
