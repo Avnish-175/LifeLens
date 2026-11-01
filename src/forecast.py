@@ -1,28 +1,87 @@
 import pandas as pd
 
+from ml.predictor import ml_available, predict_next_day_ml
 
 def predict_next_day(data):
     """
-    Very simple trend prediction based on
-    the average of the last 3 records.
+    Generate tomorrow's wellbeing prediction using
+    the trained LifeLens ML models.
+
+    Falls back to the original 3-day average method
+    if ML models are unavailable.
     """
+
+    if data.empty:
+        return {}
+
+    # -----------------------------------------
+    # PRIMARY: MACHINE LEARNING PREDICTION
+    # -----------------------------------------
+
+    ml_prediction = predict_next_day_ml(data)
+
+    if ml_prediction:
+
+        # Keep the existing forecast UI compatible.
+        return {
+            "SleepHours": round(
+                float(data.tail(3)["SleepHours"].mean()), 1
+            ),
+
+            "ScreenTime": round(
+                float(data.tail(3)["ScreenTime"].mean()), 1
+            ),
+
+            "ExerciseMinutes": round(
+                float(data.tail(3)["ExerciseMinutes"].mean()), 1
+            ),
+
+            # These four values now come from ML.
+            "Mood": ml_prediction["Mood"],
+            "Energy": ml_prediction["Energy"],
+            "Stress": ml_prediction["Stress"],
+            "Productivity": ml_prediction["Productivity"],
+        }
+
+    # -----------------------------------------
+    # FALLBACK: ORIGINAL FORECAST
+    # -----------------------------------------
 
     if len(data) < 3:
         return {}
 
     recent = data.tail(3)
 
-    prediction = {
-        "SleepHours": round(recent["SleepHours"].mean(), 1),
-        "Mood": round(recent["Mood"].mean(), 1),
-        "Stress": round(recent["Stress"].mean(), 1),
-        "Energy": round(recent["Energy"].mean(), 1),
-        "ScreenTime": round(recent["ScreenTime"].mean(), 1),
-        "ExerciseMinutes": round(recent["ExerciseMinutes"].mean(), 1),
-        "Productivity": round(recent["Productivity"].mean(), 1),
-    }
+    return {
+        "SleepHours": round(
+            recent["SleepHours"].mean(), 1
+        ),
 
-    return prediction
+        "Mood": round(
+            recent["Mood"].mean(), 1
+        ),
+
+        "Stress": round(
+            recent["Stress"].mean(), 1
+        ),
+
+        "Energy": round(
+            recent["Energy"].mean(), 1
+        ),
+
+        "ScreenTime": round(
+            recent["ScreenTime"].mean(), 1
+        ),
+
+        "ExerciseMinutes": round(
+            recent["ExerciseMinutes"].mean(), 1
+        ),
+
+        "Productivity": round(
+            recent["Productivity"].mean(), 1
+        ),
+    }
+    
 
 def generate_forecast_summary(prediction):
 

@@ -4,263 +4,415 @@ import pandas as pd
 
 
 # ============================================================
-# CONFIGURATION
+# LIFELENS REALISTIC ML DATA GENERATOR
 # ============================================================
 
-NUM_RECORDS = 3000
+NUM_DAYS = 5000
 RANDOM_SEED = 42
 
 np.random.seed(RANDOM_SEED)
 
 
-# ============================================================
-# PATHS
-# ============================================================
+# ------------------------------------------------------------
+# OUTPUT LOCATION
+# ------------------------------------------------------------
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
 DATA_DIR = os.path.join(BASE_DIR, "data")
-
-OUTPUT_FILE = os.path.join(
-    DATA_DIR,
-    "ml_training_data.csv"
-)
-
-
-# ============================================================
-# CREATE DATA DIRECTORY IF NEEDED
-# ============================================================
 
 os.makedirs(DATA_DIR, exist_ok=True)
 
+OUTPUT_FILE = os.path.join(DATA_DIR, "ml_training_data.csv")
 
-# ============================================================
+
+# ------------------------------------------------------------
+# HELPER FUNCTIONS
+# ------------------------------------------------------------
+
+def clamp(value, minimum, maximum):
+    return max(minimum, min(maximum, value))
+
+
+def noise(scale=1.0):
+    return np.random.normal(0, scale)
+
+
+# ------------------------------------------------------------
 # DATE RANGE
-# ============================================================
+# ------------------------------------------------------------
 
 dates = pd.date_range(
-    start="2018-01-01",
-    periods=NUM_RECORDS,
+    start="2012-01-01",
+    periods=NUM_DAYS,
     freq="D"
 )
 
 
-# ============================================================
-# HELPER FUNCTION
-# ============================================================
+# ------------------------------------------------------------
+# STORAGE
+# ------------------------------------------------------------
 
-def clip(value, minimum, maximum):
-    return np.clip(value, minimum, maximum)
-
-
-# ============================================================
-# GENERATE BASE BEHAVIOURAL DATA
-# ============================================================
-
-sleep = np.random.normal(
-    loc=7.0,
-    scale=1.15,
-    size=NUM_RECORDS
-)
-
-sleep = clip(sleep, 4.0, 10.0)
+records = []
 
 
-screen_time = np.random.normal(
-    loc=5.5,
-    scale=2.0,
-    size=NUM_RECORDS
-)
+# ------------------------------------------------------------
+# INITIAL WELLNESS STATE
+# ------------------------------------------------------------
 
-screen_time = clip(screen_time, 1.0, 12.0)
+previous_mood = 6.0
+previous_energy = 6.0
+previous_stress = 4.0
+previous_productivity = 6.0
 
-
-exercise = np.random.normal(
-    loc=35,
-    scale=22,
-    size=NUM_RECORDS
-)
-
-exercise = clip(exercise, 0, 120)
-
-
-study = np.random.normal(
-    loc=4.0,
-    scale=2.0,
-    size=NUM_RECORDS
-)
-
-study = clip(study, 0, 10)
+sleep_history = []
+exercise_history = []
+screen_history = []
+study_history = []
+mood_history = []
+energy_history = []
+stress_history = []
+productivity_history = []
 
 
 # ============================================================
-# GENERATE WELLNESS VARIABLES
+# GENERATE CONTINUOUS WELLNESS HISTORY
 # ============================================================
 
-# Mood is influenced by:
-# - sleep positively
-# - exercise positively
-# - screen time negatively
-# - random variation
+for i, date in enumerate(dates):
 
-mood = (
-    5.5
-    + (sleep - 6.5) * 0.9
-    + exercise * 0.015
-    - screen_time * 0.12
-    + np.random.normal(0, 1.1, NUM_RECORDS)
-)
+    weekday = date.weekday()
 
-mood = clip(mood, 1, 10)
+    is_weekend = weekday >= 5
 
 
-# Energy is influenced strongly by sleep and exercise
+    # --------------------------------------------------------
+    # SLEEP
+    # --------------------------------------------------------
 
-energy = (
-    5.5
-    + (sleep - 6.5) * 1.1
-    + exercise * 0.012
-    - screen_time * 0.08
-    + np.random.normal(0, 1.0, NUM_RECORDS)
-)
+    if is_weekend:
+        sleep = np.random.normal(7.7, 0.7)
+    else:
+        sleep = np.random.normal(6.9, 0.65)
 
-energy = clip(energy, 1, 10)
+    # Previous stress can disturb sleep
+    sleep -= max(previous_stress - 6, 0) * 0.10
 
-
-# Stress is influenced by:
-# - excessive screen time
-# - low sleep
-# - study/work pressure
-# - random variation
-
-stress = (
-    5.0
-    + (6.5 - sleep) * 0.8
-    + screen_time * 0.18
-    + study * 0.08
-    + np.random.normal(0, 1.0, NUM_RECORDS)
-)
-
-stress = clip(stress, 1, 10)
+    sleep = clamp(sleep, 4.5, 10.0)
 
 
-# Productivity is influenced by:
-# - study
-# - sleep
-# - energy
-# - mood
-# - stress negatively
+    # --------------------------------------------------------
+    # EXERCISE
+    # --------------------------------------------------------
 
-productivity = (
-    3.5
-    + study * 0.55
-    + (sleep - 6.5) * 0.55
-    + energy * 0.25
-    + mood * 0.15
-    - stress * 0.35
-    - screen_time * 0.08
-    + np.random.normal(0, 1.0, NUM_RECORDS)
-)
+    if is_weekend:
+        exercise = np.random.normal(40, 20)
+    else:
+        exercise = np.random.normal(30, 18)
 
-productivity = clip(productivity, 1, 10)
+    exercise = clamp(exercise, 0, 120)
+
+
+    # --------------------------------------------------------
+    # SCREEN TIME
+    # --------------------------------------------------------
+
+    screen = np.random.normal(5.5, 1.4)
+
+    # Higher stress → slightly more screen usage
+    screen += max(previous_stress - 5, 0) * 0.25
+
+    # Weekends usually have more screen time
+    if is_weekend:
+        screen += 0.7
+
+    screen = clamp(screen, 1.5, 11.0)
+
+
+    # --------------------------------------------------------
+    # STUDY HOURS
+    # --------------------------------------------------------
+
+    if is_weekend:
+        study = np.random.normal(2.0, 1.0)
+    else:
+        study = np.random.normal(4.5, 1.3)
+
+    study = clamp(study, 0, 9)
+
+
+    # --------------------------------------------------------
+    # TREND FEATURES
+    # --------------------------------------------------------
+
+    # Recent averages make the data longitudinal.
+    recent_sleep = np.mean(sleep_history[-3:]) if sleep_history else sleep
+    recent_exercise = (
+        np.mean(exercise_history[-3:])
+        if exercise_history
+        else exercise
+    )
+    recent_screen = (
+        np.mean(screen_history[-3:])
+        if screen_history
+        else screen
+    )
+    recent_study = (
+        np.mean(study_history[-3:])
+        if study_history
+        else study
+    )
+
+
+    # --------------------------------------------------------
+    # MOOD
+    # --------------------------------------------------------
+
+    mood = (
+        2.0
+
+        + sleep * 0.38
+        + exercise * 0.018
+
+        - screen * 0.13
+
+        + previous_mood * 0.28
+
+        + recent_sleep * 0.10
+        + recent_exercise * 0.006
+        - recent_screen * 0.04
+
+        + noise(0.65)
+    )
+
+    # Weekend mood boost
+    if is_weekend:
+        mood += 0.35
+
+    mood = clamp(mood, 1, 10)
+
+
+    # --------------------------------------------------------
+    # ENERGY
+    # --------------------------------------------------------
+
+    energy = (
+        1.3
+
+        + sleep * 0.55
+        + exercise * 0.012
+
+        - screen * 0.10
+
+        + previous_energy * 0.30
+
+        + recent_sleep * 0.12
+
+        + noise(0.55)
+    )
+
+    energy = clamp(energy, 1, 10)
+
+
+    # --------------------------------------------------------
+    # STRESS
+    # --------------------------------------------------------
+
+    stress = (
+        2.0
+
+        + screen * 0.28
+        + study * 0.20
+
+        - exercise * 0.012
+        - sleep * 0.22
+
+        + previous_stress * 0.35
+
+        + recent_screen * 0.08
+        + recent_study * 0.05
+
+        + noise(0.55)
+    )
+
+    # Heavy study days can increase stress
+    if study > 6:
+        stress += 0.6
+
+    stress = clamp(stress, 1, 10)
+
+
+    # --------------------------------------------------------
+    # PRODUCTIVITY
+    # --------------------------------------------------------
+
+    productivity = (
+        1.2
+
+        + study * 0.52
+        + energy * 0.38
+        + mood * 0.18
+
+        - stress * 0.24
+        - screen * 0.10
+
+        + previous_productivity * 0.18
+
+        + noise(0.65)
+    )
+
+    productivity = clamp(productivity, 1, 10)
+
+
+    # --------------------------------------------------------
+    # SAVE CURRENT DAY
+    # --------------------------------------------------------
+
+    records.append({
+        "Date": date,
+
+        "SleepHours": round(sleep, 2),
+        "ScreenTime": round(screen, 2),
+        "ExerciseMinutes": round(exercise, 2),
+        "StudyHours": round(study, 2),
+
+        "Mood": round(mood, 2),
+        "Energy": round(energy, 2),
+        "Stress": round(stress, 2),
+        "Productivity": round(productivity, 2)
+    })
+
+
+    # --------------------------------------------------------
+    # UPDATE HISTORY
+    # --------------------------------------------------------
+
+    sleep_history.append(sleep)
+    exercise_history.append(exercise)
+    screen_history.append(screen)
+    study_history.append(study)
+
+    mood_history.append(mood)
+    energy_history.append(energy)
+    stress_history.append(stress)
+    productivity_history.append(productivity)
+
+
+    # --------------------------------------------------------
+    # UPDATE PREVIOUS DAY
+    # --------------------------------------------------------
+
+    previous_mood = mood
+    previous_energy = energy
+    previous_stress = stress
+    previous_productivity = productivity
 
 
 # ============================================================
 # CREATE DATAFRAME
 # ============================================================
 
-df = pd.DataFrame({
-    "Date": dates,
-
-    "SleepHours": np.round(sleep, 1),
-
-    "ScreenTime": np.round(screen_time, 1),
-
-    "ExerciseMinutes": np.round(exercise, 0),
-
-    "StudyHours": np.round(study, 1),
-
-    "Mood": np.round(mood, 1),
-
-    "Energy": np.round(energy, 1),
-
-    "Stress": np.round(stress, 1),
-
-    "Productivity": np.round(productivity, 1),
-})
+df = pd.DataFrame(records)
 
 
 # ============================================================
 # CREATE NEXT-DAY TARGETS
 # ============================================================
 
-# These are what our ML models will eventually learn to predict.
-
-df["NextDayMood"] = (
-    df["Mood"].shift(-1)
-)
-
-df["NextDayEnergy"] = (
-    df["Energy"].shift(-1)
-)
-
-df["NextDayStress"] = (
-    df["Stress"].shift(-1)
-)
-
-df["NextDayProductivity"] = (
-    df["Productivity"].shift(-1)
-)
+df["NextDayMood"] = df["Mood"].shift(-1)
+df["NextDayEnergy"] = df["Energy"].shift(-1)
+df["NextDayStress"] = df["Stress"].shift(-1)
+df["NextDayProductivity"] = df["Productivity"].shift(-1)
 
 
-# ============================================================
-# REMOVE LAST ROW
-# ============================================================
-
-# The final record has no "next day" available.
-
+# Remove last row because tomorrow's values don't exist
 df = df.dropna().reset_index(drop=True)
 
 
 # ============================================================
-# SAVE DATASET
+# SAVE
 # ============================================================
 
-df.to_csv(
-    OUTPUT_FILE,
-    index=False
-)
+df.to_csv(OUTPUT_FILE, index=False)
 
 
 # ============================================================
-# INFORMATION
+# REPORT
 # ============================================================
 
 print()
 print("=" * 60)
-print("LifeLens ML DATASET GENERATED")
+print("LIFELENS REALISTIC ML DATA GENERATOR")
 print("=" * 60)
 
-print(f"Rows: {len(df)}")
-print(f"Columns: {len(df.columns)}")
-
 print()
-print("Saved to:")
-print(OUTPUT_FILE)
+print(f"Generated records : {len(df)}")
+print(f"Output file       : {OUTPUT_FILE}")
 
 print()
 print("Columns:")
-print(df.columns.tolist())
+print("-" * 60)
 
-print()
-print("First 5 records:")
-print(df.head())
+for column in df.columns:
+    print(f"  {column}")
 
 print()
 print("Dataset statistics:")
-print(df.describe().round(2))
+print("-" * 60)
+
+print(
+    df[
+        [
+            "SleepHours",
+            "ScreenTime",
+            "ExerciseMinutes",
+            "StudyHours",
+            "Mood",
+            "Energy",
+            "Stress",
+            "Productivity"
+        ]
+    ].describe().round(2)
+)
+
+print()
+print("Correlation with next-day targets:")
+print("-" * 60)
+
+features = [
+    "SleepHours",
+    "ScreenTime",
+    "ExerciseMinutes",
+    "StudyHours",
+    "Mood",
+    "Energy",
+    "Stress",
+    "Productivity"
+]
+
+targets = [
+    "NextDayMood",
+    "NextDayEnergy",
+    "NextDayStress",
+    "NextDayProductivity"
+]
+
+for target in targets:
+
+    print(f"\n{target}")
+
+    correlations = (
+        df[features + [target]]
+        .corr()[target]
+        .drop(target)
+        .sort_values(key=abs, ascending=False)
+    )
+
+    for feature, value in correlations.head(5).items():
+        print(f"  {feature:<20} {value:.3f}")
+
 
 print()
 print("=" * 60)
-print("PHASE 1 COMPLETE")
+print("DATASET GENERATION COMPLETE")
 print("=" * 60)
+print()
