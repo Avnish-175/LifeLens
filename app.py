@@ -2,7 +2,6 @@ from src.data_manager import save_data, load_data
 import streamlit as st
 import math
 import pandas as pd
-from ml.predictor import ml_available
 import os
 from ui.hero import show_hero
 from src.analytics import get_summary
