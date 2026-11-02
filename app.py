@@ -1,5 +1,6 @@
 from src.data_manager import save_data, load_data, normalize_date_series
 import streamlit as st
+import re
 import math
 import pandas as pd
 import os
@@ -55,6 +56,7 @@ from src.intelligence import (
     get_biggest_discovery,
     get_todays_focus
 )
+from ml.nlp.reporter import generate_wellness_report
 from src.data_manager import check_data_file
 
 @st.dialog("Check-in already exists")
@@ -162,6 +164,7 @@ summary = None
 insights = []
 trend_analysis = None
 ml_prediction = None
+nlp_wellness_report = None
 
 
 if not data.empty:
@@ -220,6 +223,14 @@ if not data.empty:
     summary = get_summary(data)
     insights = generate_insights(data)
     trend_analysis = generate_trend_analysis(data)
+    nlp_wellness_report = generate_wellness_report(
+        wellness_score,
+        wellness_category,
+        latest,
+        history=data,
+        daily_note=latest.get("DailyNote", ""),
+        
+    )
 
 
 if not data.empty:
@@ -772,6 +783,46 @@ if selected_tab == "🏠 Dashboard":
                 </div>
                 """
             )
+
+    st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
+
+    # ==========================================
+    # 🧠 AI WELLNESS REPORT (NLP Model)
+    # ==========================================
+    st.markdown(
+        """
+        <div style="font-size: 17px; font-weight: 700; color: #0F172A; letter-spacing: -0.01em; margin-bottom: 2px;">
+            🧠 Your Wellness Report
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    st.caption("AI-generated narrative summary based on your latest wellness metrics.")
+
+    if nlp_wellness_report:
+        formatted_report = str(nlp_wellness_report).strip()
+        for marker in ["2.", "3.", "4."]:
+            formatted_report = re.sub(rf"\s+(?={re.escape(marker)})", "\n\n", formatted_report)
+        st.html(
+            f"""
+            <div style="
+                background: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-left: 4px solid #6366F1;
+                border-radius: 12px;
+                padding: 16px 20px;
+                color: #1E293B;
+                box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+                line-height: 1.6;
+                font-size: 14px;
+                white-space: pre-line;
+            ">
+                {formatted_report}
+            </div>
+            """
+        )
+    else:
+        st.info("The AI Wellness Report is temporarily unavailable.")
 
     st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
 

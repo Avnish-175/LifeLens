@@ -23,7 +23,16 @@ Thumbs.db
 Desktop.ini
 .DS_Store
 
-# Large datasets or trained checkpoints if needed (uncomment if very large)
-models/*.pkl
-models/*.joblib
+# Trained models, checkpoints & weights
+models/
+*.pkl
+*.joblib
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.onnx
+checkpoint-*/
+lifelens_nlp_model/
+**/lifelens_nlp_model/
 
