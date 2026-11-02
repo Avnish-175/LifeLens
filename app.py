@@ -47,6 +47,7 @@ from src.weekly_report import generate_weekly_report
 from src.correlation import get_correlation_matrix
 from src.monthly_report import generate_monthly_report
 from src.forecast import (
+    predict_next_day,
     generate_forecast_summary,
     generate_forecast_explanation,
     generate_ai_forecast_insight
@@ -56,7 +57,7 @@ from src.intelligence import (
     get_biggest_discovery,
     get_todays_focus
 )
-from ml.nlp.reporter import generate_wellness_report
+from ml.nlp.reporter import generate_wellness_report, explain_tomorrow_forecast
 from src.data_manager import check_data_file
 
 @st.dialog("Check-in already exists")
@@ -165,6 +166,7 @@ insights = []
 trend_analysis = None
 ml_prediction = None
 nlp_wellness_report = None
+forecast_explanation = None
 
 
 if not data.empty:
@@ -241,16 +243,38 @@ if not data.empty:
     correlation_matrix = get_correlation_matrix(data)
 
     # =========================================================
-    # TOMORROW'S ML FORECAST
+    # TOMORROW'S FORECAST (BASE + ML)
     # =========================================================
     prediction = {}
 
+    try:
+        prediction = predict_next_day(data) or {}
+    except Exception as error:
+        print("Base forecast unavailable:", repr(error))
+        prediction = {}
+
     if ml_available():
         try:
-            prediction = predict_next_day_ml(data)
+            ml_pred = predict_next_day_ml(data) or {}
+            ml_metrics = ["Mood", "Energy", "Stress", "Productivity"]
+            for metric in ml_metrics:
+                if metric in ml_pred and ml_pred[metric] is not None:
+                    prediction[metric] = ml_pred[metric]
         except Exception as error:
             print("ML forecast unavailable:", repr(error))
-            prediction = {}
+
+    forecast_explanation = None
+    if prediction:
+        try:
+            forecast_explanation = explain_tomorrow_forecast(
+                prediction,
+                latest=latest,
+                history=data,
+                daily_note=latest.get("DailyNote", "")
+            )
+        except Exception as error:
+            print("Forecast explanation unavailable:", repr(error))
+            forecast_explanation = None
 
     biggest_discovery = get_biggest_discovery(data)
     next_step = get_todays_focus(data)
@@ -784,7 +808,75 @@ if selected_tab == "🏠 Dashboard":
                 """
             )
 
-    st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
+    # ==========================================
+    # 🔮 TOMORROW FORECAST AI EXPLANATION
+    # ==========================================
+    if prediction and forecast_explanation:
+        outlook_text = forecast_explanation.get("Tomorrow Outlook", "")
+        factor_text = forecast_explanation.get("Main Factor", "")
+        pattern_text = forecast_explanation.get("Pattern", "")
+        priority_text = forecast_explanation.get("Priority", "")
+
+        st.html(
+            f"""
+            <div style="
+                background: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-left: 4px solid #6366F1;
+                border-radius: 12px;
+                padding: 16px 20px;
+                margin-top: 14px;
+                margin-bottom: 14px;
+                box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+            ">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                    <span style="font-size: 16px;">🔮</span>
+                    <span style="font-size: 14px; font-weight: 700; color: #1E293B; letter-spacing: -0.01em;">
+                        Tomorrow Forecast Analysis
+                    </span>
+                    <span style="font-size: 11px; background: #EEF2FF; color: #4F46E5; padding: 2px 8px; border-radius: 999px; font-weight: 600;">
+                        AI Explained
+                    </span>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;">
+                    <div style="background: #F8FAFC; padding: 12px 14px; border-radius: 8px; border: 1px solid #F1F5F9;">
+                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #4F46E5; margin-bottom: 4px;">
+                            Tomorrow Outlook
+                        </div>
+                        <div style="font-size: 13px; color: #334155; line-height: 1.45;">
+                            {outlook_text}
+                        </div>
+                    </div>
+                    <div style="background: #F8FAFC; padding: 12px 14px; border-radius: 8px; border: 1px solid #F1F5F9;">
+                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #0284C7; margin-bottom: 4px;">
+                            Main Factor
+                        </div>
+                        <div style="font-size: 13px; color: #334155; line-height: 1.45;">
+                            {factor_text}
+                        </div>
+                    </div>
+                    <div style="background: #F8FAFC; padding: 12px 14px; border-radius: 8px; border: 1px solid #F1F5F9;">
+                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #D97706; margin-bottom: 4px;">
+                            Pattern
+                        </div>
+                        <div style="font-size: 13px; color: #334155; line-height: 1.45;">
+                            {pattern_text}
+                        </div>
+                    </div>
+                    <div style="background: #F8FAFC; padding: 12px 14px; border-radius: 8px; border: 1px solid #F1F5F9;">
+                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #059669; margin-bottom: 4px;">
+                            Priority
+                        </div>
+                        <div style="font-size: 13px; color: #334155; line-height: 1.45;">
+                            {priority_text}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            """
+        )
+    else:
+        st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
 
     # ==========================================
     # 🧠 AI WELLNESS REPORT (NLP Model)
