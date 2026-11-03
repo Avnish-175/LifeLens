@@ -239,6 +239,8 @@ st.markdown('<div id="top"></div>', unsafe_allow_html=True)
 CSV_FILE = "data/daily_checkins.csv"
 
 today = datetime.now()
+today_date = today.date()
+today_str = today.strftime("%Y-%m-%d")
 
 greeting = "🌅 Good Morning"
 
@@ -264,6 +266,10 @@ st.html(
 )
 data = load_data()
 
+# Centralized check-in state for today
+today_recorded = False
+today_row = None
+
 if not data.empty:
     data = data.copy()
     if "Date" in data.columns:
@@ -271,6 +277,10 @@ if not data.empty:
         data["Date"] = pd.to_datetime(normalized_dates, errors="coerce")
         data = data.dropna(subset=["Date"]).sort_values("Date")
         data = data.drop_duplicates(subset=["Date"], keep="last")
+        today_mask = (data["Date"].dt.strftime("%Y-%m-%d") == today_str)
+        if today_mask.any():
+            today_recorded = True
+            today_row = data[today_mask].iloc[-1]
 
     numeric_columns = [
         "SleepHours",
@@ -286,13 +296,11 @@ if not data.empty:
         if col in data.columns:
             data[col] = pd.to_numeric(data[col], errors="coerce")
 
-
-
-
-# Set safe defaults so the dashboard can handle an empty dataset.
+# Set safe defaults so the dashboard handles missing check-in or empty dataset safely.
 wellness_score = None
-wellness_category = "Insufficient data"
+wellness_category = "Not recorded"
 score_breakdown = []
+available_factors = 0
 radar_chart = create_wellness_radar_chart(score_breakdown)
 
 summary = None
@@ -303,29 +311,28 @@ nlp_wellness_report = None
 weekly_facts = {}
 weekly_ai_analysis = None
 forecast_explanation = None
+prediction = {}
 
-
-if not data.empty:
-    latest = data.iloc[-1]
-
+# Compute Today's Wellness and Today's Report ONLY if today's check-in exists
+if today_recorded and today_row is not None:
     wellness_score, wellness_category = calculate_wellness_score(
-        latest["SleepHours"],
-        latest["Mood"],
-        latest["Stress"],
-        latest["Energy"],
-        latest["ExerciseMinutes"],
-        latest["ScreenTime"],
-        latest["Productivity"],
+        today_row["SleepHours"],
+        today_row["Mood"],
+        today_row["Stress"],
+        today_row["Energy"],
+        today_row["ExerciseMinutes"],
+        today_row["ScreenTime"],
+        today_row["Productivity"],
     )
     
     score_factors = [
-        latest["SleepHours"],
-        latest["Mood"],
-        latest["Stress"],
-        latest["Energy"],
-        latest["ExerciseMinutes"],
-        latest["ScreenTime"],
-        latest["Productivity"],
+        today_row["SleepHours"],
+        today_row["Mood"],
+        today_row["Stress"],
+        today_row["Energy"],
+        today_row["ExerciseMinutes"],
+        today_row["ScreenTime"],
+        today_row["Productivity"],
     ]
 
     available_factors = sum(
@@ -333,55 +340,54 @@ if not data.empty:
         if _valid_number(value) is not None
     )
 
-
     score_breakdown = get_score_breakdown(
-        latest["SleepHours"],
-        latest["Mood"],
-        latest["Stress"],
-        latest["Energy"],
-        latest["ExerciseMinutes"],
-        latest["ScreenTime"],
-        latest["Productivity"],
+        today_row["SleepHours"],
+        today_row["Mood"],
+        today_row["Stress"],
+        today_row["Energy"],
+        today_row["ExerciseMinutes"],
+        today_row["ScreenTime"],
+        today_row["Productivity"],
     )
 
     radar_chart = create_wellness_radar_chart(
-    score_breakdown,
-    recorded_values={
-        "SleepHours": latest["SleepHours"],
-        "Mood": latest["Mood"],
-        "Stress": latest["Stress"],
-        "Energy": latest["Energy"],
-        "ExerciseMinutes": latest["ExerciseMinutes"],
-        "ScreenTime": latest["ScreenTime"],
-        "StudyHours": latest["StudyHours"],
-        "Productivity": latest["Productivity"],
-    },
-)
+        score_breakdown,
+        recorded_values={
+            "SleepHours": today_row["SleepHours"],
+            "Mood": today_row["Mood"],
+            "Stress": today_row["Stress"],
+            "Energy": today_row["Energy"],
+            "ExerciseMinutes": today_row["ExerciseMinutes"],
+            "ScreenTime": today_row["ScreenTime"],
+            "StudyHours": today_row.get("StudyHours"),
+            "Productivity": today_row["Productivity"],
+        },
+    )
 
-    summary = get_summary(data)
-    insights = generate_insights(data)
-    trend_analysis = generate_trend_analysis(data)
     nlp_wellness_report = generate_wellness_report(
         wellness_score,
         wellness_category,
-        latest,
+        today_row,
         history=data,
-        daily_note=latest.get("DailyNote", ""),
-        
+        daily_note=today_row.get("DailyNote", "") if pd.notna(today_row.get("DailyNote")) else "",
     )
 
-
+# Historical analysis, trends, correlations, and reports remain available from history
 if not data.empty:
+    summary = get_summary(data)
+    insights = generate_insights(data)
+    trend_analysis = generate_trend_analysis(data)
     recommendations = generate_recommendations(data)
     patterns = analyze_patterns(data)
 
     # Existing weekly report remains unchanged
     weekly_report = generate_weekly_report(data)
 
-    # Python calculates factual weekly statistics
-    weekly_facts = calculate_weekly_facts(data)
+    # Deterministic weekly facts calculation using authoritative facts engine
+    from src.nlp_facts import build_weekly_facts
+    weekly_facts = build_weekly_facts(data)
 
-    # Local NLP model explains those facts
+    # Local V5 NLP model explains those facts with validation and fallback
     weekly_ai_analysis = explain_weekly_facts(
         weekly_facts
     )
@@ -389,11 +395,15 @@ if not data.empty:
     monthly_report = generate_monthly_report(data)
     correlation_matrix = get_correlation_matrix(data)
 
-    # =========================================================
-    # TOMORROW'S FORECAST (BASE + ML)
-    # =========================================================
-    prediction = {}
+    biggest_discovery = get_biggest_discovery(data)
+    next_step = get_todays_focus(data)
+    today_focus = get_todays_focus(data)
 
+# =========================================================
+# TOMORROW'S FORECAST (BASE + ML)
+# ONLY run if today's check-in has been recorded
+# =========================================================
+if today_recorded and today_row is not None:
     try:
         prediction = predict_next_day(data) or {}
     except Exception as error:
@@ -410,23 +420,17 @@ if not data.empty:
         except Exception as error:
             print("ML forecast unavailable:", repr(error))
 
-    forecast_explanation = None
     if prediction:
         try:
             forecast_explanation = explain_tomorrow_forecast(
                 prediction,
-                latest=latest,
+                latest=today_row,
                 history=data,
-                daily_note=latest.get("DailyNote", "")
+                daily_note=today_row.get("DailyNote", "") if pd.notna(today_row.get("DailyNote")) else ""
             )
         except Exception as error:
             print("Forecast explanation unavailable:", repr(error))
             forecast_explanation = None
-
-    biggest_discovery = get_biggest_discovery(data)
-    next_step = get_todays_focus(data)
-    today_focus = get_todays_focus(data)
-today = datetime.now()
 
 selected_tab = show_navigation()
 
@@ -446,18 +450,13 @@ if selected_tab == "📝 Daily Check-in":
 
     with st.form("daily_checkin"):
 
-        # Date: automatic current date (read-only display)
-        checkin_date = today.date()
-        date = checkin_date
-        formatted_date_display = checkin_date.strftime("%B %d, %Y").replace(" 0", " ")
-
-        st.html(f"""
-            <div class="ll-date-chip">
-                <span class="muted">📅 Check-in date</span>
-                <b>{formatted_date_display}</b>
-                <span class="tag">Today</span>
-            </div>
-        """)
+        # Date picker: allows today or past dates, restricts future dates
+        date = st.date_input(
+            "📅 Check-in Date",
+            value=today_date,
+            max_value=today_date,
+            help="Select today or a past date to record or update your check-in."
+        )
 
         # CARD 1 — 🌱 DAILY HABITS (Compact 2x2 slider grid)
         with st.container(border=True, key="daily_habits_panel"):
@@ -611,6 +610,9 @@ if selected_tab == "📝 Daily Check-in":
 
 
         if submitted:
+            if date > today_date:
+                st.error("Future dates cannot be selected.")
+                st.stop()
 
             # Convert descriptive choices to the existing numeric scale.
             # Missing answers remain None rather than being treated as zero.
@@ -682,8 +684,8 @@ if selected_tab == "📝 Daily Check-in":
 
                     data = load_data()
 
-                    st.success("Your daily check-in has been saved.")
-                    st.subheader("Today's Entry")
+                    st.success(f"Your check-in for {date_string} has been saved.")
+                    st.subheader(f"Entry for {date_string}")
                     st.dataframe(new_entry, use_container_width=True)
                 except Exception as e:
                     st.error(f"Unable to save check-in: {e}")
@@ -708,234 +710,248 @@ if selected_tab == "🏠 Dashboard":
         )
         st.stop()
 
-    # ==========================================
-    # 1. HERO — TODAY'S WELLNESS SCORE
-    # (value + category come straight from calculate_wellness_score)
-    # ==========================================
-    score_display = f"{round(wellness_score)}" if wellness_score is not None else "--"
-    cat_display = wellness_category if wellness_score is not None else "Insufficient Data"
-    cat_class = (
-        _CATEGORY_CLASS.get(wellness_category, "ll-cat-none")
-        if wellness_score is not None else "ll-cat-none"
-    )
-    ring_pct = max(0.0, min(100.0, float(wellness_score))) if wellness_score is not None else 0.0
-
-    st.html(
-        f"""
-        <div class="ll-hero {cat_class}">
-            <div class="ll-hero-label">Today's Wellness</div>
-            <div class="ll-ring" style="--p:{ring_pct:.1f}">
-                <div class="ll-ring-inner">
-                    <div class="ll-ring-score">{score_display}</div>
-                    <span class="ll-ring-max">/ 100</span>
-                </div>
-            </div>
-            <div class="ll-hero-cat">{_esc(cat_display)}</div>
-            <div class="ll-hero-foot">Based on {available_factors} of 7 recorded factors</div>
-        </div>
-        """
-    )
-
-    # ==========================================
-    # 2. METRIC CARDS (real values from the latest check-in;
-    #    status + bar come from the existing get_score_breakdown)
-    # ==========================================
-    ll_section("📊", "Today's Signals", "From your latest check-in")
-
-    breakdown_lookup = {name: (score, status) for name, score, status in score_breakdown}
-    previous = data.iloc[-2] if len(data) >= 2 else None
-
-    metric_specs = [
-        # label, column, icon, unit, decimals, key in score_breakdown
-        ("Sleep", "SleepHours", "😴", "hrs", 1, "Sleep"),
-        ("Mood", "Mood", "😊", "/ 10", 0, "Mood"),
-        ("Energy", "Energy", "⚡", "/ 10", 0, "Energy"),
-        ("Productivity", "Productivity", "🎯", "/ 10", 0, "Productivity"),
-        ("Stress", "Stress", "😌", "/ 10", 0, "Stress"),
-        ("Screen Time", "ScreenTime", "💻", "hrs", 1, "Screen Time"),
-        ("Exercise", "ExerciseMinutes", "🏃", "min", 0, "Exercise"),
-        ("Study / Work", "StudyHours", "📚", "hrs", 1, None),
-    ]
-
-    metric_cards = []
-    for label, column, icon, unit, decimals, bd_key in metric_specs:
-        current_value = latest.get(column)
-        shown = _fmt_num(current_value, decimals)
-        value_html = (
-            f'{_esc(shown)}<small>{_esc(unit)}</small>' if shown is not None else "--"
-        )
-
-        score_pct, status_text = breakdown_lookup.get(bd_key, (None, None)) if bd_key else (None, None)
-        tone = _STATUS_TONE.get(status_text, "none")
-
-        delta_html = ""
-        if previous is not None:
-            cur_n = _valid_number(current_value)
-            prev_n = _valid_number(previous.get(column))
-            if cur_n is not None and prev_n is not None:
-                diff = cur_n - prev_n
-                if abs(diff) < 0.05:
-                    delta_html = "→ same as last"
-                else:
-                    arrow = "↑" if diff > 0 else "↓"
-                    delta_html = f"{arrow} {_esc(_fmt_num(abs(diff), decimals) or '0')} vs last"
-
-        status_html = f'<span class="ll-status">{_esc(status_text)}</span>' if status_text else "<span></span>"
-        bar_html = ""
-        if score_pct is not None:
-            bar_html = f'<div class="ll-bar"><span style="width:{max(4, min(100, float(score_pct))):.0f}%"></span></div>'
-
-        metric_cards.append(
+    if not today_recorded:
+        st.html(
             f"""
-            <div class="ll-metric ll-tone-{tone}">
-                <div class="ll-metric-top">
-                    <div class="ll-metric-name"><span class="ll-metric-icon">{icon}</span>{_esc(label)}</div>
-                </div>
-                <div class="ll-metric-value">{value_html}</div>
-                <div class="ll-metric-meta">{status_html}<span class="ll-delta">{delta_html}</span></div>
-                {bar_html}
+            <div class="ll-empty" style="border: 1px solid rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.08); margin-bottom: 2rem;">
+                <span class="ll-empty-icon">📅</span>
+                <b style="color:#FBBF24;font-size:1.15rem;">Today's Check-in Pending</b><br>
+                Today's check-in has not been recorded yet ({today.strftime('%B %d, %Y')}).<br>
+                Please complete <b>📝 Daily Check-in</b> for today to unlock Today's Wellness Score, Today's Observations, and Tomorrow's Forecast.<br>
+                <span style="color:#8F8BB8;font-size:0.85rem;">Historical trends, observations, correlations, and reports remain available below.</span>
             </div>
             """
         )
-
-    st.html(f'<div class="ll-metrics">{"".join(metric_cards)}</div>')
-
-    # ==========================================
-    # 3. AI INSIGHT  +  TOMORROW'S FORECAST
-    # ==========================================
-    st.html('<div style="height: 1.6rem;"></div>')
-    col_insight, col_forecast = st.columns([1.15, 1], gap="medium")
-
-    with col_insight:
-        if nlp_wellness_report:
-            report_sections = ll_parse_report(nlp_wellness_report)
-            if report_sections:
-                report_items = "".join(
-                    f'<div class="ll-report-item"><div class="ll-report-head">{_esc(head)}</div>'
-                    f'<div class="ll-report-text">{_esc(body)}</div></div>'
-                    for head, body in report_sections
-                )
-                report_html = f'<div class="ll-report">{report_items}</div>'
-            else:
-                report_html = f'<div class="ll-report-raw">{_esc(str(nlp_wellness_report).strip())}</div>'
-        else:
-            report_html = (
-                '<div class="ll-report-raw" style="color:#A9A5CE;">'
-                'The AI Wellness Report is temporarily unavailable.</div>'
-            )
+    else:
+        # ==========================================
+        # 1. HERO — TODAY'S WELLNESS SCORE
+        # (value + category come straight from calculate_wellness_score)
+        # ==========================================
+        score_display = f"{round(wellness_score)}" if wellness_score is not None else "--"
+        cat_display = wellness_category if wellness_score is not None else "Insufficient Data"
+        cat_class = (
+            _CATEGORY_CLASS.get(wellness_category, "ll-cat-none")
+            if wellness_score is not None else "ll-cat-none"
+        )
+        ring_pct = max(0.0, min(100.0, float(wellness_score))) if wellness_score is not None else 0.0
 
         st.html(
             f"""
-            <div class="ll-card">
-                <div class="ll-card-label"><span>🧠 AI Wellness Insight</span><span class="ll-chip">AI generated</span></div>
-                {report_html}
+            <div class="ll-hero {cat_class}">
+                <div class="ll-hero-label">Today's Wellness</div>
+                <div class="ll-ring" style="--p:{ring_pct:.1f}">
+                    <div class="ll-ring-inner">
+                        <div class="ll-ring-score">{score_display}</div>
+                        <span class="ll-ring-max">/ 100</span>
+                    </div>
+                </div>
+                <div class="ll-hero-cat">{_esc(cat_display)}</div>
+                <div class="ll-hero-foot">Based on {available_factors} of 7 recorded factors</div>
             </div>
             """
         )
 
-    with col_forecast:
-        if prediction:
-            forecast_summary = generate_forecast_summary(prediction)
-            t_score, t_cat = calculate_wellness_score(
-                prediction.get("SleepHours"),
-                prediction.get("Mood"),
-                prediction.get("Stress"),
-                prediction.get("Energy"),
-                prediction.get("ExerciseMinutes"),
-                prediction.get("ScreenTime"),
-                prediction.get("Productivity"),
+        # ==========================================
+        # 2. METRIC CARDS (real values from today's check-in;
+        #    status + bar come from the existing get_score_breakdown)
+        # ==========================================
+        ll_section("📊", "Today's Signals", "From today's check-in")
+
+        breakdown_lookup = {name: (score, status) for name, score, status in score_breakdown}
+        prior_data = data[data["Date"].dt.strftime("%Y-%m-%d") < today_str] if "Date" in data.columns else pd.DataFrame()
+        previous = prior_data.iloc[-1] if not prior_data.empty else None
+
+        metric_specs = [
+            # label, column, icon, unit, decimals, key in score_breakdown
+            ("Sleep", "SleepHours", "😴", "hrs", 1, "Sleep"),
+            ("Mood", "Mood", "😊", "/ 10", 0, "Mood"),
+            ("Energy", "Energy", "⚡", "/ 10", 0, "Energy"),
+            ("Productivity", "Productivity", "🎯", "/ 10", 0, "Productivity"),
+            ("Stress", "Stress", "😌", "/ 10", 0, "Stress"),
+            ("Screen Time", "ScreenTime", "💻", "hrs", 1, "Screen Time"),
+            ("Exercise", "ExerciseMinutes", "🏃", "min", 0, "Exercise"),
+            ("Study / Work", "StudyHours", "📚", "hrs", 1, None),
+        ]
+
+        metric_cards = []
+        for label, column, icon, unit, decimals, bd_key in metric_specs:
+            current_value = today_row.get(column)
+            shown = _fmt_num(current_value, decimals)
+            value_html = (
+                f'{_esc(shown)}<small>{_esc(unit)}</small>' if shown is not None else "--"
             )
-            t_score_str = f"{round(t_score)}" if t_score is not None else "--"
 
-            forecast_facts = []
-            if _forecast_facts is not None:
-                try:
-                    forecast_facts = _forecast_facts(prediction, latest)
-                except Exception as error:
-                    print("Forecast direction facts unavailable:", repr(error))
+            score_pct, status_text = breakdown_lookup.get(bd_key, (None, None)) if bd_key else (None, None)
+            tone = _STATUS_TONE.get(status_text, "none")
 
-            forecast_rows = []
-            for fact in forecast_facts:
-                predicted_txt = _fmt_num(fact["predicted"], 1)
-                if predicted_txt is None:
-                    continue
-                unit = _FORECAST_UNITS.get(fact["metric"], "")
-                change_type = fact.get("change_type")
-                status = fact.get("status")
-                arrow = {"increase": "↑", "decrease": "↓", "same": "→"}.get(change_type, "–")
-                arrow_cls = (
-                    "good" if status == "improving"
-                    else "bad" if status in ("worsening", "declining")
-                    else "flat"
-                )
-                forecast_rows.append(
-                    f'<div class="ll-row"><span class="ll-row-name">{_esc(fact["name"])}</span>'
-                    f'<span class="ll-row-val">{_esc(predicted_txt)}{_esc(unit)}</span>'
-                    f'<span class="ll-arrow {arrow_cls}">{arrow}</span></div>'
+            delta_html = ""
+            if previous is not None:
+                cur_n = _valid_number(current_value)
+                prev_n = _valid_number(previous.get(column))
+                if cur_n is not None and prev_n is not None:
+                    diff = cur_n - prev_n
+                    if abs(diff) < 0.05:
+                        delta_html = "→ same as last"
+                    else:
+                        arrow = "↑" if diff > 0 else "↓"
+                        delta_html = f"{arrow} {_esc(_fmt_num(abs(diff), decimals) or '0')} vs last"
+
+            status_html = f'<span class="ll-status">{_esc(status_text)}</span>' if status_text else "<span></span>"
+            bar_html = ""
+            if score_pct is not None:
+                bar_html = f'<div class="ll-bar"><span style="width:{max(4, min(100, float(score_pct))):.0f}%"></span></div>'
+
+            metric_cards.append(
+                f"""
+                <div class="ll-metric ll-tone-{tone}">
+                    <div class="ll-metric-top">
+                        <div class="ll-metric-name"><span class="ll-metric-icon">{icon}</span>{_esc(label)}</div>
+                    </div>
+                    <div class="ll-metric-value">{value_html}</div>
+                    <div class="ll-metric-meta">{status_html}<span class="ll-delta">{delta_html}</span></div>
+                    {bar_html}
+                </div>
+                """
+            )
+
+        st.html(f'<div class="ll-metrics">{"".join(metric_cards)}</div>')
+
+        # ==========================================
+        # 3. AI INSIGHT  +  TOMORROW'S FORECAST
+        # ==========================================
+        st.html('<div style="height: 1.6rem;"></div>')
+        col_insight, col_forecast = st.columns([1.15, 1], gap="medium")
+
+        with col_insight:
+            if nlp_wellness_report:
+                report_sections = ll_parse_report(nlp_wellness_report)
+                if report_sections:
+                    report_items = "".join(
+                        f'<div class="ll-report-item"><div class="ll-report-head">{_esc(head)}</div>'
+                        f'<div class="ll-report-text">{_esc(body)}</div></div>'
+                        for head, body in report_sections
+                    )
+                    report_html = f'<div class="ll-report">{report_items}</div>'
+                else:
+                    report_html = f'<div class="ll-report-raw">{_esc(str(nlp_wellness_report).strip())}</div>'
+            else:
+                report_html = (
+                    '<div class="ll-report-raw" style="color:#A9A5CE;">'
+                    'The AI Wellness Report is temporarily unavailable.</div>'
                 )
 
             st.html(
                 f"""
                 <div class="ll-card">
-                    <div class="ll-card-label"><span>🔮 Tomorrow's Forecast</span>
-                        <span class="ll-chip">{_esc(forecast_summary)}</span></div>
-                    <div class="ll-forecast-score"><b>{t_score_str}</b><span>/ 100 predicted</span></div>
-                    <div class="ll-forecast-cat">{_esc(t_cat)}</div>
-                    <div class="ll-rows">{"".join(forecast_rows)}</div>
+                    <div class="ll-card-label"><span>🧠 AI Wellness Insight</span><span class="ll-chip">AI generated</span></div>
+                    {report_html}
                 </div>
                 """
             )
-        else:
+
+        with col_forecast:
+            if prediction:
+                forecast_summary = generate_forecast_summary(prediction)
+                t_score, t_cat = calculate_wellness_score(
+                    prediction.get("SleepHours"),
+                    prediction.get("Mood"),
+                    prediction.get("Stress"),
+                    prediction.get("Energy"),
+                    prediction.get("ExerciseMinutes"),
+                    prediction.get("ScreenTime"),
+                    prediction.get("Productivity"),
+                )
+                t_score_str = f"{round(t_score)}" if t_score is not None else "--"
+
+                forecast_facts = []
+                if _forecast_facts is not None:
+                    try:
+                        forecast_facts = _forecast_facts(prediction, today_row)
+                    except Exception as error:
+                        print("Forecast direction facts unavailable:", repr(error))
+
+                forecast_rows = []
+                for fact in forecast_facts:
+                    predicted_txt = _fmt_num(fact["predicted"], 1)
+                    if predicted_txt is None:
+                        continue
+                    unit = _FORECAST_UNITS.get(fact["metric"], "")
+                    change_type = fact.get("change_type")
+                    status = fact.get("status")
+                    arrow = {"increase": "↑", "decrease": "↓", "same": "→"}.get(change_type, "–")
+                    arrow_cls = (
+                        "good" if status == "improving"
+                        else "bad" if status in ("worsening", "declining")
+                        else "flat"
+                    )
+                    forecast_rows.append(
+                        f'<div class="ll-row"><span class="ll-row-name">{_esc(fact["name"])}</span>'
+                        f'<span class="ll-row-val">{_esc(predicted_txt)}{_esc(unit)}</span>'
+                        f'<span class="ll-arrow {arrow_cls}">{arrow}</span></div>'
+                    )
+
+                st.html(
+                    f"""
+                    <div class="ll-card">
+                        <div class="ll-card-label"><span>🔮 Tomorrow's Forecast</span>
+                            <span class="ll-chip">{_esc(forecast_summary)}</span></div>
+                        <div class="ll-forecast-score"><b>{t_score_str}</b><span>/ 100 predicted</span></div>
+                        <div class="ll-forecast-cat">{_esc(t_cat)}</div>
+                        <div class="ll-rows">{"".join(forecast_rows)}</div>
+                    </div>
+                    """
+                )
+            else:
+                st.html(
+                    """
+                    <div class="ll-empty">
+                        <span class="ll-empty-icon">🔮</span>
+                        <b style="color:#F4F2FF;">Tomorrow's Forecast</b><br>
+                        Log check-ins for a few consecutive days to unlock your AI forecast.
+                    </div>
+                    """
+                )
+
+        # Forecast explanation (existing explain_tomorrow_forecast output)
+        if prediction and forecast_explanation:
+            outlook_text = (
+                forecast_explanation.get("Tomorrow Outlook")
+                or forecast_explanation.get("outlook")
+                or forecast_explanation.get("Tomorrow's Outlook")
+                or "No insight available."
+            )
+            factor_text = (
+                forecast_explanation.get("Main Factor")
+                or forecast_explanation.get("main_factor")
+                or forecast_explanation.get("Key Factor")
+                or "No insight available."
+            )
+            pattern_text = (
+                forecast_explanation.get("Pattern")
+                or forecast_explanation.get("pattern")
+                or forecast_explanation.get("Pattern Detected")
+                or "No insight available."
+            )
+            priority_text = (
+                forecast_explanation.get("Priority")
+                or forecast_explanation.get("priority")
+                or forecast_explanation.get("Tomorrow's Focus")
+                or "No insight available."
+            )
+
             st.html(
-                """
-                <div class="ll-empty">
-                    <span class="ll-empty-icon">🔮</span>
-                    <b style="color:#F4F2FF;">Tomorrow's Forecast</b><br>
-                    Log check-ins for a few consecutive days to unlock your AI forecast.
+                f"""
+                <div class="ll-card" style="margin-top: 1.1rem;">
+                    <div class="ll-card-label"><span>🔮 Tomorrow Forecast Analysis</span><span class="ll-chip">AI explained</span></div>
+                    <div class="ll-grid-4">
+                        <div class="ll-tile"><div class="ll-tile-head">Tomorrow Outlook</div><div class="ll-tile-text">{_esc(outlook_text)}</div></div>
+                        <div class="ll-tile"><div class="ll-tile-head">Main Factor</div><div class="ll-tile-text">{_esc(factor_text)}</div></div>
+                        <div class="ll-tile"><div class="ll-tile-head">Pattern</div><div class="ll-tile-text">{_esc(pattern_text)}</div></div>
+                        <div class="ll-tile"><div class="ll-tile-head">Priority</div><div class="ll-tile-text">{_esc(priority_text)}</div></div>
+                    </div>
                 </div>
                 """
             )
-
-    # Forecast explanation (existing explain_tomorrow_forecast output)
-    if prediction and forecast_explanation:
-        outlook_text = (
-            forecast_explanation.get("Tomorrow Outlook")
-            or forecast_explanation.get("outlook")
-            or forecast_explanation.get("Tomorrow's Outlook")
-            or "No insight available."
-        )
-        factor_text = (
-            forecast_explanation.get("Main Factor")
-            or forecast_explanation.get("main_factor")
-            or forecast_explanation.get("Key Factor")
-            or "No insight available."
-        )
-        pattern_text = (
-            forecast_explanation.get("Pattern")
-            or forecast_explanation.get("pattern")
-            or forecast_explanation.get("Pattern Detected")
-            or "No insight available."
-        )
-        priority_text = (
-            forecast_explanation.get("Priority")
-            or forecast_explanation.get("priority")
-            or forecast_explanation.get("Tomorrow's Focus")
-            or "No insight available."
-        )
-
-        st.html(
-            f"""
-            <div class="ll-card" style="margin-top: 1.1rem;">
-                <div class="ll-card-label"><span>🔮 Tomorrow Forecast Analysis</span><span class="ll-chip">AI explained</span></div>
-                <div class="ll-grid-4">
-                    <div class="ll-tile"><div class="ll-tile-head">Tomorrow Outlook</div><div class="ll-tile-text">{_esc(outlook_text)}</div></div>
-                    <div class="ll-tile"><div class="ll-tile-head">Main Factor</div><div class="ll-tile-text">{_esc(factor_text)}</div></div>
-                    <div class="ll-tile"><div class="ll-tile-head">Pattern</div><div class="ll-tile-text">{_esc(pattern_text)}</div></div>
-                    <div class="ll-tile"><div class="ll-tile-head">Priority</div><div class="ll-tile-text">{_esc(priority_text)}</div></div>
-                </div>
-            </div>
-            """
-        )
 
     # ==========================================
     # 4. WELLNESS TRENDS (existing charts + existing trend analysis)
@@ -1035,54 +1051,57 @@ if selected_tab == "🏠 Dashboard":
     # ==========================================
     # 6. WELLNESS BREAKDOWN (existing radar + strongest / focus areas)
     # ==========================================
-    ll_section("🧭", "Wellness Breakdown", "Factor scores from your latest check-in")
+    ll_section("🧭", "Wellness Breakdown", "Factor scores from today's check-in" if today_recorded else "Factor scores breakdown")
 
     with st.expander("🔍 View Wellness Radar & Area Breakdown", expanded=False):
-        radar_col, areas_col = st.columns([1.3, 1], gap="medium")
-        with radar_col:
-            st.plotly_chart(
-                ll_style_radar(radar_chart),
-                use_container_width=True,
-                config={"displayModeBar": False}
-            )
-        with areas_col:
-            st.markdown("##### 🌟 Strongest Areas (≥80)")
-            strongest_areas = [
-                (factor, score)
-                for factor, score, status in score_breakdown
-                if score is not None and score >= 80
-            ]
-            if strongest_areas:
-                for factor, score in strongest_areas:
-                    st.html(
-                        f"""
-                        <div class="wellness-insight-card positive" style="padding: 8px 12px; margin-bottom: 6px;">
-                            <span>{factor}</span>
-                            <strong>{score:.0f}/100</strong>
-                        </div>
-                        """
-                    )
-            else:
-                st.caption("No factors currently at or above 80.")
+        if not today_recorded:
+            st.info("Today's check-in is required to view today's wellness radar and factor breakdown.")
+        else:
+            radar_col, areas_col = st.columns([1.3, 1], gap="medium")
+            with radar_col:
+                st.plotly_chart(
+                    ll_style_radar(radar_chart),
+                    use_container_width=True,
+                    config={"displayModeBar": False}
+                )
+            with areas_col:
+                st.markdown("##### 🌟 Strongest Areas (≥80)")
+                strongest_areas = [
+                    (factor, score)
+                    for factor, score, status in score_breakdown
+                    if score is not None and score >= 80
+                ]
+                if strongest_areas:
+                    for factor, score in strongest_areas:
+                        st.html(
+                            f"""
+                            <div class="wellness-insight-card positive" style="padding: 8px 12px; margin-bottom: 6px;">
+                                <span>{factor}</span>
+                                <strong>{score:.0f}/100</strong>
+                            </div>
+                            """
+                        )
+                else:
+                    st.caption("No factors currently at or above 80.")
 
-            st.markdown("##### ⚠️ Focus Areas (<60)")
-            attention_areas = [
-                (factor, score)
-                for factor, score, status in score_breakdown
-                if score is not None and score < 60
-            ]
-            if attention_areas:
-                for factor, score in attention_areas:
-                    st.html(
-                        f"""
-                        <div class="wellness-insight-card attention" style="padding: 8px 12px; margin-bottom: 6px;">
-                            <span>{factor}</span>
-                            <strong>{score:.0f}/100</strong>
-                        </div>
-                        """
-                    )
-            else:
-                st.caption("No factors currently below 60.")
+                st.markdown("##### ⚠️ Focus Areas (<60)")
+                attention_areas = [
+                    (factor, score)
+                    for factor, score, status in score_breakdown
+                    if score is not None and score < 60
+                ]
+                if attention_areas:
+                    for factor, score in attention_areas:
+                        st.html(
+                            f"""
+                            <div class="wellness-insight-card attention" style="padding: 8px 12px; margin-bottom: 6px;">
+                                <span>{factor}</span>
+                                <strong>{score:.0f}/100</strong>
+                            </div>
+                            """
+                        )
+                else:
+                    st.caption("No factors currently below 60.")
 
     # ==========================================
     # 7. HABIT RELATIONSHIPS (unchanged logic)
@@ -1157,24 +1176,46 @@ if selected_tab == "🏠 Dashboard":
         ll_section("🗓️", "Weekly AI Analysis")
 
         weekly_sections = []  # [[title, [lines]], ...]
-        for line in weekly_ai_analysis.split("\n"):
-            line = line.strip()
-
-            if not line:
-                continue
-
-            if line.startswith("WEEKLY OVERVIEW") or "WEEKLY SUMMARY" in line:
-                weekly_sections.append(["📊 Weekly Overview", []])
-            elif line.startswith("KEY TREND") or "METRIC COMPARISONS" in line:
-                weekly_sections.append(["📈 Key Trend", []])
-            elif line.startswith("MAIN FACTOR") or "ROUTINE CHANGES" in line:
-                weekly_sections.append(["🎯 Main Factor", []])
-            elif line.startswith("NEXT WEEK PRIORITY") or "NEXT WEEK" in line:
-                weekly_sections.append(["🚀 Next Week Priority", []])
+        if isinstance(weekly_ai_analysis, dict):
+            key_map = [
+                (["Weekly Overview", "WEEKLY OVERVIEW", "WEEKLY SUMMARY", "overview", "summary"], "📊 Weekly Overview"),
+                (["Key Trend", "KEY TREND", "METRIC COMPARISONS", "trend", "metrics"], "📈 Key Trend"),
+                (["Main Factor", "MAIN FACTOR", "ROUTINE CHANGES", "factor", "routine"], "🎯 Main Factor"),
+                (["Next Week Priority", "NEXT WEEK PRIORITY", "NEXT WEEK", "priority"], "🚀 Next Week Priority"),
+            ]
+            for candidate_keys, title in key_map:
+                for k in candidate_keys:
+                    if k in weekly_ai_analysis and weekly_ai_analysis[k]:
+                        val = weekly_ai_analysis[k]
+                        lines = val if isinstance(val, list) else [str(val).strip()]
+                        weekly_sections.append([title, lines])
+                        break
+        elif isinstance(weekly_ai_analysis, str):
+            headings_map = [
+                ("📊 Weekly Overview", r"(?:^|\s+)(?:WEEKLY\s+(?:SUMMARY|OVERVIEW)|OVERVIEW):?"),
+                ("📈 Key Trend", r"(?:\s+)(?:METRIC\s+COMPARISONS|KEY\s+TREND|TRENDS?):?"),
+                ("🎯 Main Factor", r"(?:\s+)(?:ROUTINE\s+CHANGES|MAIN\s+FACTOR|KEY\s+FACTOR):?"),
+                ("🚀 Next Week Priority", r"(?:\s+)(?:NEXT\s+WEEK(?:\s+PRIORITY)?|PRIORITY|FOCUS):?"),
+            ]
+            positions = []
+            for title, regex in headings_map:
+                m = re.search(regex, weekly_ai_analysis, re.IGNORECASE)
+                if m:
+                    positions.append((m.start(), m.end(), title))
+            positions.sort(key=lambda x: x[0])
+            if positions:
+                for idx, (_, end, title) in enumerate(positions):
+                    nxt = positions[idx + 1][0] if idx + 1 < len(positions) else len(weekly_ai_analysis)
+                    content = weekly_ai_analysis[end:nxt].strip(" \t\n:-")
+                    if content:
+                        weekly_sections.append([title, [content]])
             else:
-                if not weekly_sections:
-                    weekly_sections.append(["📊 Weekly Overview", []])
-                weekly_sections[-1][1].append(line)
+                for line in weekly_ai_analysis.split("\n"):
+                    line = line.strip()
+                    if line:
+                        if not weekly_sections:
+                            weekly_sections.append(["📊 Weekly Overview", []])
+                        weekly_sections[-1][1].append(line)
 
         weekly_tiles = "".join(
             f'<div class="ll-tile"><div class="ll-tile-head">{_esc(title)}</div>'

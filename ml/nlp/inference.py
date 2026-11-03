@@ -103,12 +103,12 @@ def generate_fallback_daily(facts: Dict[str, Any]) -> str:
 
 
 def generate_fallback_weekly(facts: Dict[str, Any]) -> str:
-    """Deterministic fallback for weekly analysis."""
+    """Deterministic 4-section fallback for weekly analysis matching UI expectations."""
     start = facts.get("wellness_start", "--")
     end = facts.get("wellness_end", "--")
     change = facts.get("wellness_change", 0)
     direction = facts.get("wellness_direction", "unchanged")
-    sign = "+" if change > 0 else ""
+    sign = "+" if isinstance(change, (int, float)) and change > 0 else ""
 
     metrics = facts.get("metrics", {})
     metric_lines = []
@@ -119,16 +119,35 @@ def generate_fallback_weekly(facts: Dict[str, Any]) -> str:
             metric_lines.append(
                 f"{display_name} moved from {d['start']} to {d['end']} ({d['direction']})"
             )
-    metrics_str = ", ".join(metric_lines) if metric_lines else "core metrics remained within expected ranges"
+    metrics_str = ", ".join(metric_lines) if metric_lines else "core metrics remained steady within expected ranges"
+
+    routine_lines = []
+    for r in ["SleepHours", "ScreenTime", "ExerciseMinutes"]:
+        if r in metrics:
+            rd = metrics[r]
+            rname = METRIC_DISPLAY_NAMES.get(r, r)
+            routine_lines.append(f"{rname} moved from {rd['start']} to {rd['end']}")
+    routine_str = ", ".join(routine_lines) if routine_lines else "routine habits remained consistent"
+
+    if direction in ("improved", "improving"):
+        overview_tone = f"Overall wellness improved by {abs(change)} points from {start} to {end}."
+        next_week_action = "Maintain the routines that supported your gains while keeping habit patterns consistent."
+    elif direction in ("declining", "worsening"):
+        overview_tone = f"Overall wellness experienced pressure, shifting from {start} to {end} ({change} points)."
+        next_week_action = "Prioritize recovery and focus on decompressing to rebuild momentum next week."
+    else:
+        overview_tone = f"Overall wellness remained stable at {end} points throughout the week."
+        next_week_action = "Continue consistent sleep and daily pacing to preserve baseline stability."
 
     return (
-        f"📅 WEEKLY SUMMARY\n"
-        f"Wellness moved from {start} to {end} ({sign}{change} points, {direction}). "
-        f"Your recorded habits reflect steady engagement across the tracked period.\n\n"
-        f"📈 METRIC COMPARISONS\n"
+        f"WEEKLY SUMMARY\n"
+        f"{overview_tone} Your tracked metrics show measurable progress across daily entries.\n\n"
+        f"METRIC COMPARISONS\n"
         f"{metrics_str}.\n\n"
-        f"🎯 NEXT WEEK\n"
-        f"Focus on maintaining regular sleep routines and managing daily stress proactively."
+        f"ROUTINE CHANGES\n"
+        f"{routine_str}.\n\n"
+        f"NEXT WEEK\n"
+        f"{next_week_action}"
     )
 
 
@@ -189,31 +208,78 @@ def generate_fallback_daily_note(facts: Dict[str, Any]) -> str:
 
 def validate_nlp_output(text: Optional[str], task: str, facts: Dict[str, Any]) -> bool:
     """
-    Lightweight validation checking for obvious numerical or directional hallucinations.
-    Returns True if valid, False if fallback should be used.
+    Validation checking for instruction leakage, numerical mismatches, and directional hallucinations.
+    Returns True if valid, False if fallback/retry should be used.
     """
-    if not text or len(text.strip()) < 20:
+    if not text or len(text.strip()) < 25:
         return False
 
     t = text.lower()
 
+    # Reject echoed prompt instructions
+    forbidden_phrases = [
+        "output only the four requested sections",
+        "use the provided facts exactly",
+        "do not recalculate numbers",
+        "do not invent numbers",
+        "task: weekly_analysis",
+        "current data:",
+        "generate exactly 4",
+    ]
+    if any(phrase in t for phrase in forbidden_phrases):
+        return False
+
     if task == "daily_analysis":
-        # Check if score_direction is unchanged
         score_dir = facts.get("score_direction")
         if score_dir == "unchanged":
-            # If model says decreased from X to X or declined
             if "decreased" in t or "declining" in t or "increased" in t:
                 return False
 
     elif task == "weekly_analysis":
+        # 1. Directional consistency
         direction = facts.get("wellness_direction")
-        if direction in ["declining", "worsening"] and ("rose sharply" in t or "improved sharply" in t or "wellness rose" in t):
-            return False
-
-        metrics = facts.get("metrics", {})
-        if "Stress" in metrics and metrics["Stress"]["direction"] == "worsening":
-            if "stress improved" in t:
+        if direction in ["declining", "worsening"]:
+            if "rose sharply" in t or "improved sharply" in t or "wellness rose" in t or "wellness increased" in t:
                 return False
+        elif direction in ["improved", "improving"]:
+            if "declined sharply" in t or "wellness fell" in t or "wellness decreased" in t or "wellness dropped" in t:
+                return False
+        elif direction == "unchanged":
+            if "wellness rose" in t or "wellness fell" in t or "wellness increased" in t or "wellness decreased" in t:
+                return False
+
+        # 2. Check for start and end wellness score hallucination if mentioned
+        start = facts.get("wellness_start")
+        end = facts.get("wellness_end")
+        change = facts.get("wellness_change")
+        
+        match_scores = re.search(r"from\s+(\d+)\s+to\s+(\d+)", t)
+        if match_scores and start is not None and end is not None:
+            found_start, found_end = int(match_scores.group(1)), int(match_scores.group(2))
+            if found_start != int(start) or found_end != int(end):
+                return False
+
+        match_change = re.search(r"([+-]?\d+)\s*points", t)
+        if match_change and change is not None:
+            found_change = int(match_change.group(1))
+            if abs(found_change) != abs(int(change)):
+                return False
+
+        # 3. Metric direction validation across all tracked metrics
+        metrics = facts.get("metrics", {})
+        for m, v in metrics.items():
+            m_low = m.lower()
+            if m_low in t:
+                m_dir = v.get("direction")
+                if m_dir in ("declining", "worsening"):
+                    if re.search(rf"\b{m_low}\b[^.\n]*\b(?:improved|improving|rose|gains?)\b", t):
+                        return False
+                elif m_dir in ("improved", "improving"):
+                    if re.search(rf"\b{m_low}\b[^.\n]*\b(?:declined|declining|worsened|worsening|dropped|fell)\b", t):
+                        return False
+                elif m_dir == "unchanged":
+                    if re.search(rf"\b{m_low}\b[^.\n]*\b(?:rose|fell|dropped|improved|worsened)\b", t):
+                        return False
 
     elif task == "forecast_explanation":
         for m in ["Mood", "Stress", "Energy", "Productivity"]:
@@ -318,13 +384,13 @@ def build_prompt_from_facts(task: str, facts: Dict[str, Any]) -> str:
 # CORE REUSABLE INFERENCE FUNCTION
 # =====================================================================
 
-def generate_nlp_response(task: str, facts: Dict[str, Any]) -> str:
+def generate_nlp_response(task: str, facts: Dict[str, Any], retry: bool = True) -> str:
     """
     Main entry point for hybrid NLP generation:
     1. Check facts
     2. Try loading model and running inference
     3. Validate output against facts
-    4. Fall back safely on failure or invalid output
+    4. If validation fails, retry once with stricter prompt before falling back
     """
     if not facts:
         return ""
@@ -348,7 +414,6 @@ def generate_nlp_response(task: str, facts: Dict[str, Any]) -> str:
             truncation=True,
             max_length=256,
         )
-
         inputs = {key: value.to(_device) for key, value in inputs.items()}
 
         with torch.no_grad():
@@ -364,11 +429,51 @@ def generate_nlp_response(task: str, facts: Dict[str, Any]) -> str:
             skip_special_tokens=True
         ).strip()
 
-        # Validate that model did not hallucinate directions or impossible numbers
         if validate_nlp_output(generated, task, facts):
+            if task == "weekly_analysis":
+                for h in ["WEEKLY SUMMARY", "METRIC COMPARISONS", "ROUTINE CHANGES", "NEXT WEEK"]:
+                    generated = re.sub(rf"(?<!\n)(?={h})", "\n", generated)
+                    generated = re.sub(rf"(?<={h})[ 	]*:?[ 	]*", "\n", generated)
             return generated
-        else:
-            return fallback_fn(facts)
+
+        # Validation failed: retry once with stricter prompt if requested
+        if retry:
+            stricter_prompt = (
+                f"{prompt}\n"
+                f"STRICT CONSTRAINT: State exact numbers from facts only. "
+                f"Wellness Score is {facts.get('wellness_start')} to {facts.get('wellness_end')} ({facts.get('wellness_change')} change, {facts.get('wellness_direction')}). "
+                f"Do NOT output meta instructions or altered numbers."
+            )
+            inputs_retry = _tokenizer(
+                stricter_prompt,
+                return_tensors="pt",
+                truncation=True,
+                max_length=300,
+            )
+            inputs_retry = {key: value.to(_device) for key, value in inputs_retry.items()}
+
+            with torch.no_grad():
+                out_retry = _model.generate(
+                    **inputs_retry,
+                    max_new_tokens=180,
+                    num_beams=4,
+                    early_stopping=True,
+                )
+
+            gen_retry = _tokenizer.decode(
+                out_retry[0],
+                skip_special_tokens=True
+            ).strip()
+
+            if validate_nlp_output(gen_retry, task, facts):
+                if task == "weekly_analysis":
+                    for h in ["WEEKLY SUMMARY", "METRIC COMPARISONS", "ROUTINE CHANGES", "NEXT WEEK"]:
+                        gen_retry = re.sub(rf"(?<!\n)(?={h})", "\n", gen_retry)
+                        gen_retry = re.sub(rf"(?<={h})[ \t]*:?[ \t]*", "\n", gen_retry)
+                return gen_retry
+
+        # Safe fallback if model generation or retry is not fact-compliant
+        return fallback_fn(facts)
 
     except Exception as error:
         print(f"Inference error for {task}:", repr(error))

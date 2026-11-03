@@ -628,6 +628,11 @@ def _resolve_tomorrow_prediction(history, tomorrow_prediction):
         return None
 
     try:
+        from datetime import datetime
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        last_date = str(history.iloc[-1].get("Date", "")).split()[0]
+        if last_date != today_str:
+            return None
         from ml.predictor import predict_next_day_ml
         prediction = predict_next_day_ml(history)
         return prediction if prediction else None
@@ -748,12 +753,17 @@ def explain_tomorrow_forecast(
         return None
 
     try:
-        # Current values: explicit `latest`, otherwise most recent history row.
+        # Current values: explicit `latest`, otherwise most recent history row ONLY if it matches today.
         current = latest
         if current is None and history is not None:
             try:
                 if not history.empty:
-                    current = history.iloc[-1]
+                    from datetime import datetime
+                    today_str = datetime.now().strftime("%Y-%m-%d")
+                    last_row = history.iloc[-1]
+                    last_date = str(last_row.get("Date", "")).split()[0]
+                    if last_date == today_str:
+                        current = last_row
             except Exception:
                 current = None
 
@@ -794,84 +804,118 @@ def explain_tomorrow_forecast(
 
 def explain_weekly_facts(weekly_facts, daily_notes=None):
     """
-    Explain Python-calculated weekly facts using the existing local NLP model.
+    Explain Python-calculated weekly facts using the V5 hybrid NLP pipeline.
 
-    Python calculates the statistics.
-    The NLP model only explains them.
+    Python calculates authoritative statistics (src/nlp_facts.py).
+    The V5 model explains them with strict numerical validation and fallback.
+
+    Returns a dictionary with 4 structured sections:
+        "Weekly Overview", "Key Trend", "Main Factor", "Next Week Priority"
+    or None if weekly_facts is empty.
     """
-    if not weekly_facts or not _load_model():
+    if not weekly_facts:
         return None
 
     try:
+        import re
+        from src.nlp_facts import METRIC_DISPLAY_NAMES
+        from ml.nlp.inference import generate_nlp_response
+
+        # Build authoritative deterministic baseline matching the 4 UI sections
+        start = weekly_facts.get("wellness_start", "--")
+        end = weekly_facts.get("wellness_end", "--")
+        change = weekly_facts.get("wellness_change", 0)
+        direction = weekly_facts.get("wellness_direction", "unchanged")
+        sign = "+" if isinstance(change, (int, float)) and change > 0 else ""
+
         metrics = weekly_facts.get("metrics", {})
-        days = weekly_facts.get("days_available", 0)
+        metric_strs = []
+        for m in ["Mood", "Energy", "Stress", "Productivity"]:
+            if m in metrics:
+                d = metrics[m]
+                display_name = METRIC_DISPLAY_NAMES.get(m, m)
+                metric_strs.append(f"{display_name} moved from {d['start']} to {d['end']} ({d['direction']})")
+        trend_default = ", ".join(metric_strs) if metric_strs else "Core metrics remained within normal ranges."
 
-        facts_text = []
-        for metric, values in metrics.items():
-            facts_text.append(
-                f"{metric}: "
-                f"current_average={values.get('current_average', 'N/A')}, "
-                f"previous_average={values.get('previous_average', 'N/A')}, "
-                f"change={values.get('change', 'N/A')}, "
-                f"trend={values.get('trend', 'N/A')}"
-            )
+        routine_strs = []
+        for r in ["SleepHours", "ScreenTime", "ExerciseMinutes"]:
+            if r in metrics:
+                rd = metrics[r]
+                rname = METRIC_DISPLAY_NAMES.get(r, r)
+                routine_strs.append(f"{rname} moved from {rd['start']} to {rd['end']}")
+        routine_default = ", ".join(routine_strs) if routine_strs else "Routine factors remained steady."
 
-        facts_text = "\n".join(facts_text)
+        if direction in ("improved", "improving"):
+            overview_default = f"Overall wellness improved from {start} to {end} ({sign}{change} points). Recorded habits reflect positive progression."
+            priority_default = "Maintain the consistent habits supporting these gains, especially in your top-performing routines."
+        elif direction in ("declining", "worsening"):
+            overview_default = f"Overall wellness experienced pressure, moving from {start} to {end} ({change} points). The week presented some routine challenges."
+            priority_default = "Prioritize rest and stress reduction next week to stabilize baseline wellness."
+        else:
+            overview_default = f"Overall wellness held steady from {start} to {end} ({change} points). Balanced daily routines helped maintain equilibrium."
+            priority_default = "Keep sleep and screen habits consistent to protect your steady baseline."
 
-        notes_text = "No daily notes available."
-        if daily_notes:
-            if isinstance(daily_notes, (list, tuple)):
-                valid_notes = [
-                    str(note).strip()
-                    for note in daily_notes
-                    if str(note).strip()
-                ]
-                if valid_notes:
-                    notes_text = "\n".join(
-                        f"- {note}" for note in valid_notes[-7:]
-                    )
-            else:
-                notes_text = str(daily_notes).strip()
+        result = {
+            "Weekly Overview": overview_default,
+            "Key Trend": trend_default + ".",
+            "Main Factor": routine_default + ".",
+            "Next Week Priority": priority_default,
+        }
 
-        prompt = f"""Analyze these factual LifeLens weekly wellness statistics.
+        # Query V5 NLP model for natural-language interpretation
+        raw = generate_nlp_response("weekly_analysis", weekly_facts)
+        if raw and isinstance(raw, str) and raw.strip():
+            raw_text = raw.strip()
+            headings_map = [
+                ("Weekly Overview", r"(?:^|\s+)(?:WEEKLY\s+(?:SUMMARY|OVERVIEW)|OVERVIEW):?"),
+                ("Key Trend", r"(?:\s+)(?:METRIC\s+COMPARISONS|KEY\s+TREND|TRENDS?):?"),
+                ("Main Factor", r"(?:\s+)(?:ROUTINE\s+CHANGES|MAIN\s+FACTOR|KEY\s+FACTOR):?"),
+                ("Next Week Priority", r"(?:\s+)(?:NEXT\s+WEEK(?:\s+PRIORITY)?|PRIORITY|FOCUS):?"),
+            ]
+            positions = []
+            for title, regex in headings_map:
+                m = re.search(regex, raw_text, re.IGNORECASE)
+                if m:
+                    positions.append((m.start(), m.end(), title))
+            positions.sort(key=lambda x: x[0])
 
-NUMBER OF RECORDED DAYS: {days}
+            if positions:
+                for idx, (_, end_pos, title) in enumerate(positions):
+                    nxt = positions[idx + 1][0] if idx + 1 < len(positions) else len(raw_text)
+                    content = raw_text[end_pos:nxt].strip(" \t\n:-")
+                    if content and len(content) >= 15:
+                        low = content.lower()
+                        if "output only the four" not in low and "task:" not in low:
+                            if title == "Weekly Overview":
+                                if direction in ("improved", "improving") and ("declined" in low or "fell" in low or "dropped" in low):
+                                    continue
+                                if direction in ("declining", "worsening") and ("improved" in low or "rose" in low or "increased" in low):
+                                    continue
+                                result[title] = content
+                            elif title == "Key Trend":
+                                contradiction = False
+                                for m, v in metrics.items():
+                                    m_low = m.lower()
+                                    if m_low in low:
+                                        m_dir = v.get("direction")
+                                        if m_dir in ("declining", "worsening") and re.search(rf"\b{m_low}\b[^.\n]*\b(?:improved|improving|rose|gains?)\b", low):
+                                            contradiction = True
+                                            break
+                                        if m_dir in ("improved", "improving") and re.search(rf"\b{m_low}\b[^.\n]*\b(?:declined|declining|worsened|worsening|dropped|fell)\b", low):
+                                            contradiction = True
+                                            break
+                                if not contradiction:
+                                    result[title] = content
+                            else:
+                                result[title] = content
 
-WEEKLY FACTS:
-{facts_text}
-
-DAILY NOTES:
-{notes_text}
-
-Generate exactly 4 sections using these exact headings:
-
-WEEKLY OVERVIEW:
-Summarize the overall week using only the supplied statistics.
-
-KEY TREND:
-Identify the most meaningful improving, declining, or stable trend supported by the data.
-
-MAIN FACTOR:
-Identify the most important measurable strength or weakness from the supplied facts.
-
-NEXT WEEK PRIORITY:
-Give one practical action based on the strongest evidence in the data.
-
-Rules:
-- Python-calculated statistics are authoritative.
-- Do not invent statistics.
-- Do not invent trends.
-- Do not claim causation unless the supplied data explicitly supports it.
-- Do not calculate a different Wellness Score.
-- Do not make medical diagnoses.
-- If data is limited, explicitly acknowledge that.
-- Keep every section concise.
-- Output only the four requested sections.
-"""
-
-        report = _generate_text(prompt, max_new_tokens=160)
-        return report if report else None
+        return result
 
     except Exception as error:
         print("Weekly NLP analysis error:", repr(error))
-        return None
+        return {
+            "Weekly Overview": "Overall wellness tracked steadily across recorded days.",
+            "Key Trend": "Core metrics remained within expected ranges.",
+            "Main Factor": "Daily routine factors contributed to current baseline levels.",
+            "Next Week Priority": "Maintain consistent sleep and active recovery habits.",
+        }
