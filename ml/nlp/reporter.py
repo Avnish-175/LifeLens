@@ -9,7 +9,8 @@ except ImportError:
     _DEPS_AVAILABLE = False
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-MODEL_DIR = os.path.join(BASE_DIR, "ml", "nlp", "lifelens_nlp_model")
+# V5 fine-tuned FLAN-T5 model is the single authoritative LLM
+MODEL_DIR = os.path.join(BASE_DIR, "ml", "nlp", "lifelens_nlp_model_v5_gpu")
 
 _tokenizer = None
 _model = None
@@ -17,28 +18,9 @@ _device = None
 
 
 def _load_model():
-    global _tokenizer, _model, _device
-
-    if not _DEPS_AVAILABLE:
-        return False
-    if _model is not None:
-        return True
-    if not os.path.isdir(MODEL_DIR):
-        return False
-
-    try:
-        _device = "cuda" if torch.cuda.is_available() else "cpu"
-        _tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
-        _model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_DIR)
-        _model = _model.to(_device)
-        _model.eval()
-        return True
-    except Exception as error:
-        print("NLP model load error:", repr(error))
-        _tokenizer = None
-        _model = None
-        _device = None
-        return False
+    """Route model loading to the authoritative V5 model bundle."""
+    from ml.nlp.inference import load_v5_model
+    return load_v5_model()
 
 
 # ---------------------------------------------------------------------------
@@ -657,78 +639,42 @@ def generate_wellness_report(
     tomorrow_prediction=None,
 ):
     """
-    Generate a dynamic LifeLens wellness analysis.
+    Generate a dynamic LifeLens wellness analysis using the authoritative V5 LLM.
 
-    Wellness Score/category remain authoritative. The NLP model only interprets
-    the supplied data and existing ML forecast; it does not replace either.
+    Wellness Score/category remain authoritative. The V5 FLAN-T5 model only interprets
+    the supplied facts and existing ML forecast; it does not replace either.
+    Returns:
+        {"status": "ok", "text": str} or failure dict with status and honest message.
+        None if wellness_score or latest check-in is not recorded.
     """
-    if wellness_score is None or latest is None or not _load_model():
+    if wellness_score is None or latest is None:
         return None
 
     try:
-        tomorrow_prediction = _resolve_tomorrow_prediction(
-            history, tomorrow_prediction
+        from src.nlp_facts import build_daily_facts
+        from ml.nlp.inference import generate_v5_daily_report
+
+        facts = build_daily_facts(
+            latest=latest,
+            wellness_score=wellness_score,
+            wellness_category=wellness_category,
+            history=history,
         )
 
+        history_text = _build_history_text(history)
         note_text = str(daily_note).strip() if daily_note is not None else ""
-        if not note_text:
-            note_text = "No daily note provided."
 
-        prompt = f"""Analyze this LifeLens user's wellness data.
-
-Current Wellness Score: {wellness_score}/100
-Current Category: {wellness_category}
-
-CURRENT CHECK-IN
-Sleep: {float(latest['SleepHours']):.1f} hours
-Mood: {float(latest['Mood']):.1f}/10
-Energy: {float(latest['Energy']):.1f}/10
-Stress: {float(latest['Stress']):.1f}/10
-Exercise: {float(latest['ExerciseMinutes']):.0f} minutes
-Screen Time: {float(latest['ScreenTime']):.1f} hours
-Productivity: {float(latest['Productivity']):.1f}/10
-
-RECENT HISTORY (up to 7 latest check-ins)
-{_build_history_text(history)}
-
-DAILY NOTE
-{note_text}
-
-TOMORROW'S EXISTING ML PREDICTION (directions calculated by Python)
-{_build_prediction_text(tomorrow_prediction, latest)}
-
-Generate exactly 4 wellness insights using these exact headings:
-
-OVERALL:
-Briefly explain the user's current wellness state using the Wellness Score and Category.
-
-KEY FACTOR:
-Identify the single most important strength or weakness affecting today's wellness.
-
-PATTERN:
-Identify one meaningful relationship or trend from the supplied data. Only mention a pattern supported by the data.
-
-PRIORITY:
-Give one practical and specific action the user should focus on next.
-
-Rules:
-- Use only the provided LifeLens data.
-- Treat the Wellness Score and Category as authoritative.
-- Treat tomorrow's values as predictions, not observations.
-- Do not invent measurements, events, causes, diagnoses, or trends.
-- Do not calculate or replace the Wellness Score.
-- Do not replace the existing ML prediction logic.
-- Do not repeat the same point in multiple sections.
-- Keep each section concise.
-- Do not add introductions, conclusions, numbering, or extra headings.
-"""
-
-        report = _generate_text(prompt, max_new_tokens=160)
-        return _clean_report(report) if report else None
+        return generate_v5_daily_report(
+            facts=facts,
+            history_text=history_text,
+            note_text=note_text
+        )
 
     except Exception as error:
-        print("NLP report error:", repr(error))
-        return None
+        import sys
+        print("[LifeLens NLP Error] generate_wellness_report error:", repr(error), file=sys.stderr)
+        from ml.nlp.inference import MSG_DAILY_GEN_FAILED
+        return {"status": "generation_failed", "message": MSG_DAILY_GEN_FAILED}
 
 
 def explain_tomorrow_forecast(
@@ -738,16 +684,15 @@ def explain_tomorrow_forecast(
     daily_note=None
 ):
     """
-    Explain Tomorrow's Forecast.
+    Explain Tomorrow's Forecast using the authoritative V5 fine-tuned LLM.
 
-    Python calculates every direction (metric-aware). The NLP models only word
-    the already-calculated facts (V5 model first, then this module's model).
-    Each generated section is validated; anything wrong or missing is replaced
-    by a deterministic, fact-correct sentence.
-
-    Returns a dictionary with 4 keys:
+    The numerical forecast comes strictly from ML models and Wellness Score logic.
+    The V5 LLM interprets the forecast facts and generates the natural-language explanation.
+    Returns:
+        dict with status ('ok', 'not_found', 'load_failed', 'generation_failed')
+        and the 4 forecast fields when successful:
         "Tomorrow Outlook", "Main Factor", "Pattern", "Priority"
-    or None if prediction is empty.
+        or None if prediction is empty.
     """
     if not prediction:
         return None
@@ -767,39 +712,24 @@ def explain_tomorrow_forecast(
             except Exception:
                 current = None
 
-        facts = _build_forecast_facts(prediction, current)
-        comparable = [f for f in facts if f["current"] is not None]
-        if not comparable:
-            return dict(_FALLBACK_FORECAST)
+        from src.nlp_facts import build_forecast_facts
+        from ml.nlp.inference import generate_v5_forecast_explanation
 
-        result = _deterministic_forecast(facts)
-        allowed = _allowed_numbers(facts)
-        accepted = set()
+        facts = build_forecast_facts(current, prediction)
+        history_text = _build_history_text(history)
 
-        for generator in (_generate_v5_forecast_text, _generate_legacy_forecast_text):
-            if len(accepted) == len(_FORECAST_KEYS):
-                break
-            try:
-                raw = generator(facts)
-                sections = _parse_forecast_sections(raw)
-                for key in _FORECAST_KEYS:
-                    if key in accepted:
-                        continue
-                    text = sections.get(key)
-                    if text and _section_is_safe(text, allowed, facts):
-                        result[key] = text
-                        accepted.add(key)
-            except Exception as error:
-                print("Forecast NLP generation error:", repr(error))
-
-        for key in _FORECAST_KEYS:
-            if not str(result.get(key, "")).strip():
-                result[key] = _FALLBACK_FORECAST[key]
-        return result
+        return generate_v5_forecast_explanation(
+            facts=facts,
+            latest=current,
+            prediction=prediction,
+            history_text=history_text
+        )
 
     except Exception as error:
-        print("Forecast explanation error:", repr(error))
-        return dict(_FALLBACK_FORECAST)
+        import sys
+        print("[LifeLens NLP Error] explain_tomorrow_forecast error:", repr(error), file=sys.stderr)
+        from ml.nlp.inference import MSG_FORECAST_GEN_FAILED
+        return {"status": "generation_failed", "message": MSG_FORECAST_GEN_FAILED}
 
 
 def explain_weekly_facts(weekly_facts, daily_notes=None):

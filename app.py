@@ -193,22 +193,37 @@ _STATUS_TONE = {
 
 def ll_parse_report(text):
     """
-    Split the existing NLP report into its own headings for display.
-    Returns [(heading, body), ...]; empty list if headings are not found
-    (the caller then shows the untouched raw text).
+    Split the V5 NLP report into its own headings for display.
+    Supports V5 FLAN-T5 generated headings:
+    OVERALL, SUPPORTING SIGNALS, KEY FACTOR, MAIN CONCERN, RECENT CHANGE, PATTERN, PRIORITY
+    Returns [(heading, body), ...]; empty list if headings are not found.
     """
     cleaned = re.sub(r"\*\*", "", str(text))
+    cleaned = re.sub(r"[\U0001F300-\U0001FAFF\u2600-\u27BF\uFE0F]+", "", cleaned)
     pattern = re.compile(
-        r"(?:^|\s)(?:\d\.\s*)?(OVERALL|KEY FACTOR|PATTERN|PRIORITY)\s*:\s*",
+        r"(?:^|\s)(?:[0-9]+\.\s*)?(OVERALL|SUPPORTING SIGNALS|KEY FACTOR|MAIN CONCERN|RECENT CHANGE|PATTERN|PRIORITY)\s*:?\s*",
         re.IGNORECASE,
     )
     matches = list(pattern.finditer(cleaned))
     sections = []
     for i, m in enumerate(matches):
         end = matches[i + 1].start() if i + 1 < len(matches) else len(cleaned)
-        body = re.sub(r"\s*\d\.\s*$", "", cleaned[m.end():end].strip())
+        body = re.sub(r"\s*\d+\.\s*$", "", cleaned[m.end():end].strip())
+        heading = m.group(1).upper()
+        if heading == "OVERALL":
+            head_title = "Overall Wellness"
+        elif heading in ("SUPPORTING SIGNALS", "KEY FACTOR"):
+            head_title = "Key Strengths"
+        elif heading in ("MAIN CONCERN", "PATTERN"):
+            head_title = "Key Observations"
+        elif heading == "RECENT CHANGE":
+            head_title = "Recent Change"
+        elif heading == "PRIORITY":
+            head_title = "Actionable Priority"
+        else:
+            head_title = heading.title()
         if body:
-            sections.append((m.group(1).title(), body))
+            sections.append((head_title, body))
     return sections
 
 
@@ -225,14 +240,7 @@ _FORECAST_UNITS = {
 }
 
 
-st.markdown(
-    """
-    <a href="#top" class="lifelens-back-to-top" title="Back to top">
-        ↑
-    </a>
-    """,
-    unsafe_allow_html=True,
-)
+
 
 st.markdown('<div id="top"></div>', unsafe_allow_html=True)
 
@@ -581,27 +589,7 @@ if selected_tab == "📝 Daily Check-in":
                 )
 
         # CARD 3 — OPTIONAL REFLECTION
-        with st.container(key="optional_reflection_panel"):
-            st.html(
-                """
-                <div class="ll-panel-head">
-                    <h3>📝 What influenced your day?</h3>
-                    <span>Optional · add context that numbers and ratings cannot capture.</span>
-                </div>
-                """
-            )
-
-            daily_note = st.text_area(
-                "What influenced your day?",
-                label_visibility="collapsed",
-                height=70,
-                placeholder=(
-                    "For example: an exam, a busy day, "
-                    "a good night's sleep, or a walk outdoors."
-                ),
-                help="This note is optional and is not used in calculations yet."
-            )
-
+           
         submitted = st.form_submit_button(
             "✓ Save Check-in",
             use_container_width=True,
@@ -824,16 +812,21 @@ if selected_tab == "🏠 Dashboard":
 
         with col_insight:
             if nlp_wellness_report:
-                report_sections = ll_parse_report(nlp_wellness_report)
-                if report_sections:
-                    report_items = "".join(
-                        f'<div class="ll-report-item"><div class="ll-report-head">{_esc(head)}</div>'
-                        f'<div class="ll-report-text">{_esc(body)}</div></div>'
-                        for head, body in report_sections
-                    )
-                    report_html = f'<div class="ll-report">{report_items}</div>'
+                if isinstance(nlp_wellness_report, dict) and nlp_wellness_report.get("status") in ("not_found", "load_failed", "generation_failed"):
+                    err_msg = nlp_wellness_report.get("message", "AI Wellness Insight is currently unavailable.")
+                    report_html = f'<div class="ll-report-raw" style="color:#FCA5A5;line-height:1.5;">{_esc(err_msg)}</div>'
                 else:
-                    report_html = f'<div class="ll-report-raw">{_esc(str(nlp_wellness_report).strip())}</div>'
+                    raw_text = nlp_wellness_report.get("text", "") if isinstance(nlp_wellness_report, dict) else str(nlp_wellness_report)
+                    report_sections = ll_parse_report(raw_text)
+                    if report_sections:
+                        report_items = "".join(
+                            f'<div class="ll-report-item"><div class="ll-report-head">{_esc(head)}</div>'
+                            f'<div class="ll-report-text">{_esc(body)}</div></div>'
+                            for head, body in report_sections
+                        )
+                        report_html = f'<div class="ll-report">{report_items}</div>'
+                    else:
+                        report_html = f'<div class="ll-report-raw">{_esc(raw_text.strip())}</div>'
             else:
                 report_html = (
                     '<div class="ll-report-raw" style="color:#A9A5CE;">'
@@ -912,46 +905,57 @@ if selected_tab == "🏠 Dashboard":
                     """
                 )
 
-        # Forecast explanation (existing explain_tomorrow_forecast output)
+        # Forecast explanation (generated by V5 FLAN-T5 LLM)
         if prediction and forecast_explanation:
-            outlook_text = (
-                forecast_explanation.get("Tomorrow Outlook")
-                or forecast_explanation.get("outlook")
-                or forecast_explanation.get("Tomorrow's Outlook")
-                or "No insight available."
-            )
-            factor_text = (
-                forecast_explanation.get("Main Factor")
-                or forecast_explanation.get("main_factor")
-                or forecast_explanation.get("Key Factor")
-                or "No insight available."
-            )
-            pattern_text = (
-                forecast_explanation.get("Pattern")
-                or forecast_explanation.get("pattern")
-                or forecast_explanation.get("Pattern Detected")
-                or "No insight available."
-            )
-            priority_text = (
-                forecast_explanation.get("Priority")
-                or forecast_explanation.get("priority")
-                or forecast_explanation.get("Tomorrow's Focus")
-                or "No insight available."
-            )
-
-            st.html(
-                f"""
-                <div class="ll-card" style="margin-top: 1.1rem;">
-                    <div class="ll-card-label"><span>🔮 Tomorrow Forecast Analysis</span><span class="ll-chip">AI explained</span></div>
-                    <div class="ll-grid-4">
-                        <div class="ll-tile"><div class="ll-tile-head">Tomorrow Outlook</div><div class="ll-tile-text">{_esc(outlook_text)}</div></div>
-                        <div class="ll-tile"><div class="ll-tile-head">Main Factor</div><div class="ll-tile-text">{_esc(factor_text)}</div></div>
-                        <div class="ll-tile"><div class="ll-tile-head">Pattern</div><div class="ll-tile-text">{_esc(pattern_text)}</div></div>
-                        <div class="ll-tile"><div class="ll-tile-head">Priority</div><div class="ll-tile-text">{_esc(priority_text)}</div></div>
+            if isinstance(forecast_explanation, dict) and forecast_explanation.get("status") in ("not_found", "load_failed", "generation_failed"):
+                err_msg = forecast_explanation.get("message", "Tomorrow Forecast explanation is currently unavailable.")
+                st.html(
+                    f"""
+                    <div class="ll-card" style="margin-top: 1.1rem;">
+                        <div class="ll-card-label"><span>🔮 Tomorrow Forecast Analysis</span><span class="ll-chip">AI explained</span></div>
+                        <div class="ll-report-raw" style="color:#FCA5A5;line-height:1.5;">{_esc(err_msg)}</div>
                     </div>
-                </div>
-                """
-            )
+                    """
+                )
+            else:
+                outlook_text = (
+                    forecast_explanation.get("Tomorrow Outlook")
+                    or forecast_explanation.get("outlook")
+                    or forecast_explanation.get("Tomorrow's Outlook")
+                    or "No insight available."
+                )
+                factor_text = (
+                    forecast_explanation.get("Main Factor")
+                    or forecast_explanation.get("main_factor")
+                    or forecast_explanation.get("Key Factor")
+                    or "No insight available."
+                )
+                pattern_text = (
+                    forecast_explanation.get("Pattern")
+                    or forecast_explanation.get("pattern")
+                    or forecast_explanation.get("Pattern Detected")
+                    or "No insight available."
+                )
+                priority_text = (
+                    forecast_explanation.get("Priority")
+                    or forecast_explanation.get("priority")
+                    or forecast_explanation.get("Tomorrow's Focus")
+                    or "No insight available."
+                )
+
+                st.html(
+                    f"""
+                    <div class="ll-card" style="margin-top: 1.1rem;">
+                        <div class="ll-card-label"><span>🔮 Tomorrow Forecast Analysis</span><span class="ll-chip">AI explained</span></div>
+                        <div class="ll-grid-4">
+                            <div class="ll-tile"><div class="ll-tile-head">Tomorrow Outlook</div><div class="ll-tile-text">{_esc(outlook_text)}</div></div>
+                            <div class="ll-tile"><div class="ll-tile-head">Main Factor</div><div class="ll-tile-text">{_esc(factor_text)}</div></div>
+                            <div class="ll-tile"><div class="ll-tile-head">Pattern</div><div class="ll-tile-text">{_esc(pattern_text)}</div></div>
+                            <div class="ll-tile"><div class="ll-tile-head">Priority</div><div class="ll-tile-text">{_esc(priority_text)}</div></div>
+                        </div>
+                    </div>
+                    """
+                )
 
     # ==========================================
     # 4. WELLNESS TRENDS (existing charts + existing trend analysis)

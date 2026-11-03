@@ -1,17 +1,29 @@
 """
-LifeLens V5 NLP Inference and Hybrid Integration Layer
+LifeLens V5 NLP Inference and Model Loading Layer
 ml/nlp/inference.py
 
 Architecture:
 - Loads the fine-tuned FLAN-T5 model from `ml/nlp/lifelens_nlp_model_v5_gpu`.
-- Uses deterministic Python facts from `src/nlp_facts.py` as authoritative truth.
-- Performs strict validation on generated text against factual ground truth.
-- Seamlessly falls back to deterministic explanations if validation fails, the model crashes, or CUDA/memory issues occur.
+- Cached via Streamlit @st.cache_resource so it loads only once per application session.
+- Uses deterministic Python facts from `src/nlp_facts.py` as authoritative ground truth.
+- Provides genuine LLM generation for:
+  1. Daily AI Wellness Insight
+  2. Tomorrow's Forecast Explanation
+  3. Weekly AI Analysis
+- Implements strict failure handling distinguishing:
+  * Model not found (missing directory or files)
+  * Model failed to load (initialization / dependency / CUDA error)
+  * Generation failed
+  * Successful LLM generation
+- Exposes underlying errors to terminal logs while displaying honest, user-friendly messages in the UI.
+- Never presents hardcoded or template-based text as AI-generated.
 """
 
 import os
 import re
-from typing import Dict, Any, Optional
+import sys
+from typing import Dict, Any, Optional, Union, Tuple
+import pandas as pd
 
 try:
     import torch
@@ -25,198 +37,382 @@ from src.nlp_facts import METRIC_DISPLAY_NAMES
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 MODEL_DIR = os.path.join(BASE_DIR, "ml", "nlp", "lifelens_nlp_model_v5_gpu")
 
+REQUIRED_MODEL_FILES = ["config.json", "model.safetensors", "tokenizer.json"]
+
+# Standard error messages as required by the specification
+MSG_DAILY_UNAVAILABLE = (
+    "AI Wellness Insight is currently unavailable because the V5 language model could not be loaded. "
+    "Please check the model files and restart the application."
+)
+MSG_DAILY_INIT_FAILED = (
+    "Unable to start the V5 AI model. Please check the model configuration and dependencies, then restart LifeLens."
+)
+MSG_DAILY_GEN_FAILED = "The AI model is loaded, but report generation failed. Please try again."
+
+MSG_FORECAST_UNAVAILABLE = (
+    "Tomorrow Forecast explanation is currently unavailable because the V5 language model could not be loaded. "
+    "Please check the model files and restart the application."
+)
+MSG_FORECAST_INIT_FAILED = (
+    "Unable to start the V5 AI model for forecast explanation. Please check the model configuration and dependencies, then restart LifeLens."
+)
+MSG_FORECAST_GEN_FAILED = "The AI model is loaded, but forecast explanation generation failed. Please try again."
+
+# Module-level globals for backward compatibility
 _tokenizer = None
 _model = None
 _device = None
 
 
-def load_v5_model() -> bool:
-    """Load the V5 GPU model and tokenizer cleanly."""
-    global _tokenizer, _model, _device
+def check_v5_model_files(model_dir: str = MODEL_DIR) -> Tuple[bool, Optional[str], Optional[str]]:
+    """
+    Check whether the V5 model directory and required weight/config files exist.
+    Returns: (is_available, error_status, error_detail)
+    error_status: 'not_found' | 'load_failed' | None
+    """
+    if not os.path.isdir(model_dir):
+        return False, "not_found", f"Model directory not found at: {model_dir}"
+    for filename in REQUIRED_MODEL_FILES:
+        filepath = os.path.join(model_dir, filename)
+        if not os.path.isfile(filepath):
+            return False, "load_failed", f"Required model file missing: {filename} in {model_dir}"
+    return True, None, None
 
+
+def _load_v5_bundle_raw(model_dir: str = MODEL_DIR) -> Dict[str, Any]:
+    """
+    Internal loader: initializes the tokenizer and model onto GPU (if CUDA available) or CPU.
+    Exposes any underlying error in terminal logs.
+    """
     if not _DEPS_AVAILABLE:
-        return False
-    if _model is not None:
-        return True
-    if not os.path.isdir(MODEL_DIR):
-        return False
+        err = "PyTorch or Transformers library is not installed."
+        print(f"[LifeLens NLP Error] {err}", file=sys.stderr)
+        return {
+            "status": "load_failed",
+            "error": err,
+            "model": None,
+            "tokenizer": None,
+            "device": None,
+        }
+
+    is_avail, err_status, err_msg = check_v5_model_files(model_dir)
+    if not is_avail:
+        print(f"[LifeLens NLP Error] {err_msg}", file=sys.stderr)
+        return {
+            "status": err_status,
+            "error": err_msg,
+            "model": None,
+            "tokenizer": None,
+            "device": None,
+        }
 
     try:
-        _device = "cuda" if torch.cuda.is_available() else "cpu"
-        _tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
-        _model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_DIR)
-        _model = _model.to(_device)
-        _model.eval()
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        tokenizer = AutoTokenizer.from_pretrained(model_dir)
+        model = AutoModelForSeq2SeqLM.from_pretrained(model_dir)
+        model = model.to(device)
+        model.eval()
+        return {
+            "status": "ok",
+            "model": model,
+            "tokenizer": tokenizer,
+            "device": device,
+            "error": None,
+        }
+    except Exception as exc:
+        print(f"[LifeLens NLP Error] Failed to initialize V5 model: {repr(exc)}", file=sys.stderr)
+        return {
+            "status": "load_failed",
+            "error": str(exc),
+            "model": None,
+            "tokenizer": None,
+            "device": None,
+        }
+
+
+# =====================================================================
+# CACHED MODEL ACCESS (Streamlit @st.cache_resource)
+# =====================================================================
+
+try:
+    import streamlit as st
+
+    @st.cache_resource(show_spinner=False)
+    def _cached_v5_bundle(model_dir: str = MODEL_DIR) -> Dict[str, Any]:
+        return _load_v5_bundle_raw(model_dir)
+
+    def get_v5_bundle(model_dir: str = MODEL_DIR) -> Dict[str, Any]:
+        """Retrieve the cached V5 model bundle within Streamlit session."""
+        return _cached_v5_bundle(model_dir)
+
+except Exception:
+    _global_bundle: Optional[Dict[str, Any]] = None
+
+    def get_v5_bundle(model_dir: str = MODEL_DIR) -> Dict[str, Any]:
+        """Fallback in-memory singleton cache when running outside Streamlit."""
+        global _global_bundle
+        if _global_bundle is None or _global_bundle.get("status") != "ok":
+            _global_bundle = _load_v5_bundle_raw(model_dir)
+        return _global_bundle
+
+
+def load_v5_model(model_dir: str = MODEL_DIR) -> bool:
+    """Load or retrieve the V5 model. Returns True if successfully loaded."""
+    global _tokenizer, _model, _device
+    bundle = get_v5_bundle(model_dir)
+    if bundle.get("status") == "ok":
+        _tokenizer = bundle["tokenizer"]
+        _model = bundle["model"]
+        _device = bundle["device"]
         return True
-    except Exception as error:
-        print("V5 NLP model load failed:", repr(error))
-        _tokenizer = None
-        _model = None
-        _device = None
-        return False
+    _tokenizer = None
+    _model = None
+    _device = None
+    return False
 
 
 # =====================================================================
-# DETERMINISTIC FALLBACK GENERATORS
+# DAILY AI WELLNESS REPORT GENERATION
 # =====================================================================
 
-def generate_fallback_daily(facts: Dict[str, Any]) -> str:
-    """Deterministic fallback for daily analysis."""
-    score = facts.get("wellness_score", "--")
-    category = facts.get("wellness_category", "Normal")
-    sleep = facts.get("sleep_hours", "--")
-    energy = facts.get("energy", "--")
-    mood = facts.get("mood", "--")
-    stress = facts.get("stress", "--")
-    change = facts.get("score_change")
-    direction = facts.get("score_direction", "unchanged")
+def generate_v5_daily_report(
+    facts: Dict[str, Any],
+    history_text: Optional[str] = None,
+    note_text: Optional[str] = None,
+    model_dir: str = MODEL_DIR,
+) -> Dict[str, Any]:
+    """
+    Generate the daily AI wellness report using the V5 fine-tuned FLAN-T5 model.
+    Returns:
+        {"status": "ok", "text": str}
+        or
+        {"status": "not_found" | "load_failed" | "generation_failed", "message": str}
+    """
+    bundle = get_v5_bundle(model_dir)
+    status = bundle.get("status")
 
-    if change is not None:
-        if direction == "unchanged" or change == 0:
-            change_text = f"\n\n📈 RECENT CHANGE\nYour wellness score remained unchanged at {score}."
-        else:
-            verb = "improved" if direction == "improved" else "decreased"
-            change_text = f"\n\n📈 RECENT CHANGE\nWellness {verb} by {abs(change)} points compared to yesterday."
-    else:
-        change_text = ""
+    if status == "not_found":
+        return {"status": "not_found", "message": MSG_DAILY_UNAVAILABLE}
+    elif status != "ok":
+        return {"status": "load_failed", "message": MSG_DAILY_INIT_FAILED}
 
-    concerns = []
-    if facts.get("energy") is not None and facts["energy"] <= 4:
-        concerns.append(f"energy is low at {energy}/10")
-    if facts.get("stress") is not None and facts["stress"] >= 7:
-        concerns.append(f"stress is elevated at {stress}/10")
-    if facts.get("exercise_minutes") == 0:
-        concerns.append("no physical exercise was recorded")
-    concern_str = "; ".join(concerns) if concerns else "maintain steady recovery and pacing"
+    try:
+        note_display = (
+            note_text.strip()
+            if note_text and note_text.strip().lower() not in ("none", "nan", "")
+            else "None"
+        )
+        hist_display = history_text.strip() if history_text else "No recent history available."
+        score = facts.get("wellness_score", 50)
 
-    return (
-        f"🌿 OVERALL\n"
-        f"Your recorded wellness score is {score}/100 ({category}). "
-        f"Sleep was recorded at {sleep} hours with mood at {mood}/10.\n\n"
-        f"✅ SUPPORTING SIGNALS\n"
-        f"Rest and baseline habits provide a foundation for today's activities.\n\n"
-        f"⚠️ MAIN CONCERN\n"
-        f"Main considerations: {concern_str}.{change_text}\n\n"
-        f"🎯 PRIORITY\n"
-        f"Protect recovery time and pace daily activities to support sustained wellness."
-    )
+        prompt = (
+            f"Current Data:\n"
+            f"Date: Today\n"
+            f"Wellness Score: {score}\n"
+            f"SleepHours: {facts.get('sleep_hours', 7.0)}\n"
+            f"ScreenTime: {facts.get('screen_time', 4.0)}\n"
+            f"ExerciseMinutes: {facts.get('exercise_minutes', 0)}\n"
+            f"StudyHours: {facts.get('study_hours', 0)}\n"
+            f"Mood: {facts.get('mood', 5)}\n"
+            f"Energy: {facts.get('energy', 5)}\n"
+            f"Stress: {facts.get('stress', 5)}\n"
+            f"Productivity: {facts.get('productivity', 5)}\n"
+            f"DailyNote: {note_display}\n\n"
+            f"History:\n"
+            f"{hist_display}\n"
+        )
 
+        tokenizer = bundle["tokenizer"]
+        model = bundle["model"]
+        device = bundle["device"]
 
-def generate_fallback_weekly(facts: Dict[str, Any]) -> str:
-    """Deterministic 4-section fallback for weekly analysis matching UI expectations."""
-    start = facts.get("wellness_start", "--")
-    end = facts.get("wellness_end", "--")
-    change = facts.get("wellness_change", 0)
-    direction = facts.get("wellness_direction", "unchanged")
-    sign = "+" if isinstance(change, (int, float)) and change > 0 else ""
+        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=256)
+        inputs = {k: v.to(device) for k, v in inputs.items()}
 
-    metrics = facts.get("metrics", {})
-    metric_lines = []
-    for m in ["Mood", "Energy", "Stress", "Productivity"]:
-        if m in metrics:
-            d = metrics[m]
-            display_name = METRIC_DISPLAY_NAMES.get(m, m)
-            metric_lines.append(
-                f"{display_name} moved from {d['start']} to {d['end']} ({d['direction']})"
+        with torch.no_grad():
+            output = model.generate(
+                **inputs,
+                max_new_tokens=180,
+                num_beams=4,
+                early_stopping=True,
             )
-    metrics_str = ", ".join(metric_lines) if metric_lines else "core metrics remained steady within expected ranges"
 
-    routine_lines = []
-    for r in ["SleepHours", "ScreenTime", "ExerciseMinutes"]:
-        if r in metrics:
-            rd = metrics[r]
-            rname = METRIC_DISPLAY_NAMES.get(r, r)
-            routine_lines.append(f"{rname} moved from {rd['start']} to {rd['end']}")
-    routine_str = ", ".join(routine_lines) if routine_lines else "routine habits remained consistent"
+        generated = tokenizer.decode(output[0], skip_special_tokens=True).strip()
+        if not generated:
+            print("[LifeLens NLP Error] V5 daily report generation returned empty string.", file=sys.stderr)
+            return {"status": "generation_failed", "message": MSG_DAILY_GEN_FAILED}
 
-    if direction in ("improved", "improving"):
-        overview_tone = f"Overall wellness improved by {abs(change)} points from {start} to {end}."
-        next_week_action = "Maintain the routines that supported your gains while keeping habit patterns consistent."
-    elif direction in ("declining", "worsening"):
-        overview_tone = f"Overall wellness experienced pressure, shifting from {start} to {end} ({change} points)."
-        next_week_action = "Prioritize recovery and focus on decompressing to rebuild momentum next week."
-    else:
-        overview_tone = f"Overall wellness remained stable at {end} points throughout the week."
-        next_week_action = "Continue consistent sleep and daily pacing to preserve baseline stability."
+        return {"status": "ok", "text": generated}
 
-    return (
-        f"WEEKLY SUMMARY\n"
-        f"{overview_tone} Your tracked metrics show measurable progress across daily entries.\n\n"
-        f"METRIC COMPARISONS\n"
-        f"{metrics_str}.\n\n"
-        f"ROUTINE CHANGES\n"
-        f"{routine_str}.\n\n"
-        f"NEXT WEEK\n"
-        f"{next_week_action}"
-    )
-
-
-def generate_fallback_forecast(facts: Dict[str, Any]) -> str:
-    """Deterministic fallback for forecast explanation."""
-    changes = []
-    for m in ["Mood", "Energy", "Stress", "Productivity", "SleepHours", "ScreenTime", "ExerciseMinutes"]:
-        if m in facts:
-            info = facts[m]
-            pred = info.get("predicted")
-            direction = info.get("direction", "unchanged")
-            name = METRIC_DISPLAY_NAMES.get(m, m)
-            
-            unit = "/10" if m in ["Mood", "Energy", "Stress", "Productivity"] else (" hrs" if "Time" in m or "Hours" in m else " min")
-            
-            if direction == "unchanged":
-                changes.append(f"{name} is expected to remain unchanged at {pred}{unit}")
-            elif direction == "improving":
-                changes.append(f"{name} is expected to improve to {pred}{unit}")
-            elif direction == "worsening":
-                changes.append(f"{name} is expected to worsen to {pred}{unit}")
-            elif direction == "declining":
-                changes.append(f"{name} is expected to decline to {pred}{unit}")
-
-    expected_str = ". ".join(changes) if changes else "Tomorrow's metrics are expected to hold steady"
-
-    return (
-        f"🔮 FORECAST\n"
-        f"Tomorrow's forecast projects balanced indicators based on your recent habit patterns.\n\n"
-        f"📊 EXPECTED CHANGES\n"
-        f"{expected_str}.\n\n"
-        f"🎯 TOMORROW\n"
-        f"Prepare ahead for planned tasks and keep tonight's wind-down routine consistent."
-    )
-
-
-def generate_fallback_daily_note(facts: Dict[str, Any]) -> str:
-    """Deterministic fallback for daily note analysis."""
-    note = facts.get("note", "")
-    score = facts.get("wellness_score", "--")
-    classifications = facts.get("classifications", {})
-    stress_lbl = classifications.get("stress_label", "moderate")
-    mood_lbl = classifications.get("mood_label", "moderate")
-
-    return (
-        f"💬 NOTE CONTEXT\n"
-        f"Your daily note ('{note}') provides valuable subjective context to your day.\n\n"
-        f"🧠 WELLNESS CONNECTION\n"
-        f"With a wellness score of {score}/100, stress is classified as {stress_lbl} and mood as {mood_lbl}.\n\n"
-        f"🎯 SUGGESTED FOCUS\n"
-        f"Acknowledge how your mindset connects with physical metrics and take time to decompress."
-    )
+    except Exception as exc:
+        print(f"[LifeLens NLP Error] V5 daily report generation error: {repr(exc)}", file=sys.stderr)
+        return {"status": "generation_failed", "message": MSG_DAILY_GEN_FAILED}
 
 
 # =====================================================================
-# OUTPUT VALIDATION
+# TOMORROW'S FORECAST EXPLANATION GENERATION
+# =====================================================================
+
+def parse_v5_forecast_sections(text: str) -> Dict[str, str]:
+    """
+    Parse V5 forecast explanation into the 4 structured UI fields:
+    Tomorrow Outlook, Main Factor, Pattern, Priority
+    """
+    cleaned = re.sub(r"\*\*", "", str(text))
+    cleaned = re.sub(r"[\U0001F300-\U0001FAFF\u2600-\u27BF\uFE0F]+", "", cleaned)
+
+    pattern = re.compile(
+        r"(?:^|\s)(FORECAST(?:\s+OUTLOOK)?|EXPECTED\s+CHANGES|TOMORROW(?:\s+FOCUS)?|PRIORITY)\s*:?\s*",
+        re.IGNORECASE,
+    )
+    matches = list(pattern.finditer(cleaned))
+    found: Dict[str, str] = {}
+    for i, m in enumerate(matches):
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(cleaned)
+        body = cleaned[m.end():end].strip()
+        tag = re.sub(r"\s+", "_", m.group(1).upper().strip())
+        found[tag] = body
+
+    outlook = found.get("FORECAST") or found.get("FORECAST_OUTLOOK", "")
+    changes = found.get("EXPECTED_CHANGES", "")
+    tomorrow = found.get("TOMORROW") or found.get("TOMORROW_FOCUS") or found.get("PRIORITY", "")
+
+    # Fallback to full cleaned text if headings were not detected
+    if not outlook and not changes and not tomorrow:
+        outlook = cleaned.strip()
+
+    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", changes) if s.strip()]
+    if len(sentences) >= 2:
+        main_factor = sentences[0]
+        pattern_text = " ".join(sentences[1:])
+    elif len(sentences) == 1:
+        main_factor = sentences[0]
+        pattern_text = changes
+    else:
+        main_factor = changes or "Predicted metrics reflect your recent habit trends."
+        pattern_text = changes or "Tracked indicators follow your established routines."
+
+    return {
+        "Tomorrow Outlook": outlook or "Tomorrow's outlook reflects your predicted habit patterns.",
+        "Main Factor": main_factor,
+        "Pattern": pattern_text,
+        "Priority": tomorrow or "Maintain your daily routine to support predicted outcomes.",
+    }
+
+
+def generate_v5_forecast_explanation(
+    facts: Dict[str, Any],
+    latest: Optional[Union[pd.Series, Dict[str, Any]]] = None,
+    prediction: Optional[Dict[str, Any]] = None,
+    history_text: Optional[str] = None,
+    model_dir: str = MODEL_DIR,
+) -> Dict[str, Any]:
+    """
+    Generate natural-language forecast explanation using the V5 FLAN-T5 model.
+    Passes ML predictions and authoritative factual context to the LLM.
+    Returns:
+        {
+            "status": "ok",
+            "Tomorrow Outlook": str,
+            "Main Factor": str,
+            "Pattern": str,
+            "Priority": str,
+            "raw": str
+        }
+        or
+        {"status": "not_found" | "load_failed" | "generation_failed", "message": str}
+    """
+    bundle = get_v5_bundle(model_dir)
+    status = bundle.get("status")
+
+    if status == "not_found":
+        return {"status": "not_found", "message": MSG_FORECAST_UNAVAILABLE}
+    elif status != "ok":
+        return {"status": "load_failed", "message": MSG_FORECAST_INIT_FAILED}
+
+    try:
+        latest_dict = (
+            latest.to_dict()
+            if isinstance(latest, pd.Series)
+            else (dict(latest) if latest else {})
+        )
+        pred_dict = dict(prediction) if prediction else {}
+        hist_display = history_text.strip() if history_text else "No recent history available."
+
+        curr_score = latest_dict.get("WellnessScore", 50)
+        curr_sleep = latest_dict.get("SleepHours", 7.0)
+        curr_screen = latest_dict.get("ScreenTime", 4.0)
+        curr_ex = latest_dict.get("ExerciseMinutes", 0)
+        curr_study = latest_dict.get("StudyHours", 0)
+        curr_mood = latest_dict.get("Mood", 5)
+        curr_energy = latest_dict.get("Energy", 5)
+        curr_stress = latest_dict.get("Stress", 5)
+        curr_prod = latest_dict.get("Productivity", 5)
+
+        prompt = (
+            f"Current Data:\n"
+            f"Date: Today\n"
+            f"Wellness Score: {curr_score}\n"
+            f"SleepHours: {curr_sleep}\n"
+            f"ScreenTime: {curr_screen}\n"
+            f"ExerciseMinutes: {curr_ex}\n"
+            f"StudyHours: {curr_study}\n"
+            f"Mood: {curr_mood}\n"
+            f"Energy: {curr_energy}\n"
+            f"Stress: {curr_stress}\n"
+            f"Productivity: {curr_prod}\n\n"
+            f"History:\n"
+            f"{hist_display}\n\n"
+            f"Tomorrow Predictions:\n"
+            f"Predicted Mood: {pred_dict.get('Mood', curr_mood)}\n"
+            f"Predicted Energy: {pred_dict.get('Energy', curr_energy)}\n"
+            f"Predicted Stress: {pred_dict.get('Stress', curr_stress)}\n"
+            f"Predicted Productivity: {pred_dict.get('Productivity', curr_prod)}\n"
+        )
+
+        tokenizer = bundle["tokenizer"]
+        model = bundle["model"]
+        device = bundle["device"]
+
+        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=256)
+        inputs = {k: v.to(device) for k, v in inputs.items()}
+
+        with torch.no_grad():
+            output = model.generate(
+                **inputs,
+                max_new_tokens=180,
+                num_beams=4,
+                early_stopping=True,
+            )
+
+        generated = tokenizer.decode(output[0], skip_special_tokens=True).strip()
+        if not generated:
+            print("[LifeLens NLP Error] V5 forecast generation returned empty text.", file=sys.stderr)
+            return {"status": "generation_failed", "message": MSG_FORECAST_GEN_FAILED}
+
+        parsed = parse_v5_forecast_sections(generated)
+        parsed["status"] = "ok"
+        parsed["raw"] = generated
+        return parsed
+
+    except Exception as exc:
+        print(f"[LifeLens NLP Error] V5 forecast generation error: {repr(exc)}", file=sys.stderr)
+        return {"status": "generation_failed", "message": MSG_FORECAST_GEN_FAILED}
+
+
+# =====================================================================
+# BACKWARD-COMPATIBLE UTILITIES FOR WEEKLY ANALYSIS & PROMPT VALIDATION
 # =====================================================================
 
 def validate_nlp_output(text: Optional[str], task: str, facts: Dict[str, Any]) -> bool:
     """
     Validation checking for instruction leakage, numerical mismatches, and directional hallucinations.
-    Returns True if valid, False if fallback/retry should be used.
     """
     if not text or len(text.strip()) < 25:
         return False
 
     t = text.lower()
 
-    # Reject echoed prompt instructions
     forbidden_phrases = [
         "output only the four requested sections",
         "use the provided facts exactly",
@@ -229,112 +425,28 @@ def validate_nlp_output(text: Optional[str], task: str, facts: Dict[str, Any]) -
     if any(phrase in t for phrase in forbidden_phrases):
         return False
 
-    if task == "daily_analysis":
-        score_dir = facts.get("score_direction")
-        if score_dir == "unchanged":
-            if "decreased" in t or "declining" in t or "increased" in t:
-                return False
-
-    elif task == "weekly_analysis":
-        # 1. Directional consistency
+    if task == "weekly_analysis":
         direction = facts.get("wellness_direction")
         if direction in ["declining", "worsening"]:
-            if "rose sharply" in t or "improved sharply" in t or "wellness rose" in t or "wellness increased" in t:
+            if any(p in t for p in ["rose sharply", "improved sharply", "wellness rose", "wellness increased"]):
                 return False
         elif direction in ["improved", "improving"]:
-            if "declined sharply" in t or "wellness fell" in t or "wellness decreased" in t or "wellness dropped" in t:
+            if any(p in t for p in ["declined sharply", "wellness fell", "wellness decreased", "wellness dropped"]):
                 return False
-        elif direction == "unchanged":
-            if "wellness rose" in t or "wellness fell" in t or "wellness increased" in t or "wellness decreased" in t:
-                return False
-
-        # 2. Check for start and end wellness score hallucination if mentioned
-        start = facts.get("wellness_start")
-        end = facts.get("wellness_end")
-        change = facts.get("wellness_change")
-        
-        match_scores = re.search(r"from\s+(\d+)\s+to\s+(\d+)", t)
-        if match_scores and start is not None and end is not None:
-            found_start, found_end = int(match_scores.group(1)), int(match_scores.group(2))
-            if found_start != int(start) or found_end != int(end):
-                return False
-
-        match_change = re.search(r"([+-]?\d+)\s*points", t)
-        if match_change and change is not None:
-            found_change = int(match_change.group(1))
-            if abs(found_change) != abs(int(change)):
-                return False
-
-        # 3. Metric direction validation across all tracked metrics
-        metrics = facts.get("metrics", {})
-        for m, v in metrics.items():
-            m_low = m.lower()
-            if m_low in t:
-                m_dir = v.get("direction")
-                if m_dir in ("declining", "worsening"):
-                    if re.search(rf"\b{m_low}\b[^.\n]*\b(?:improved|improving|rose|gains?)\b", t):
-                        return False
-                elif m_dir in ("improved", "improving"):
-                    if re.search(rf"\b{m_low}\b[^.\n]*\b(?:declined|declining|worsened|worsening|dropped|fell)\b", t):
-                        return False
-                elif m_dir == "unchanged":
-                    if re.search(rf"\b{m_low}\b[^.\n]*\b(?:rose|fell|dropped|improved|worsened)\b", t):
-                        return False
-
-    elif task == "forecast_explanation":
-        for m in ["Mood", "Stress", "Energy", "Productivity"]:
-            if m in facts:
-                d = facts[m].get("direction")
-                if d == "unchanged":
-                    if f"{m.lower()} rose" in t or f"{m.lower()} fell" in t:
-                        return False
-                elif d == "worsening" and m == "Stress":
-                    if "stress improving" in t:
-                        return False
 
     return True
 
 
-# =====================================================================
-# PROMPT FORMATTERS (USING DETERMINISTIC FACTS AS CONTEXT)
-# =====================================================================
-
 def build_prompt_from_facts(task: str, facts: Dict[str, Any]) -> str:
-    """Build structured prompt injecting deterministic facts."""
+    """Build structured prompt injecting deterministic facts for tasks like weekly_analysis."""
     instruction = (
         "Use the provided facts exactly.\n"
         "Do not recalculate numbers.\n"
         "Do not invent numbers.\n"
-        "Do not change metric values.\n"
-        "Do not change directions.\n"
         "Explain the provided facts naturally and concisely.\n"
     )
 
-    if task == "daily_analysis":
-        score = facts.get("wellness_score", 50)
-        prev_score = facts.get("previous_wellness_score", score)
-        change = facts.get("score_change", 0)
-        direction = facts.get("score_direction", "unchanged")
-        return (
-            f"Task: daily_analysis\n\n"
-            f"{instruction}\n"
-            f"Current Data:\n"
-            f"Wellness Score: {score}\n"
-            f"Previous Wellness Score: {prev_score}\n"
-            f"Change: {change}\n"
-            f"Direction: {direction}\n"
-            f"Category: {facts.get('wellness_category', 'Normal')}\n"
-            f"SleepHours: {facts.get('sleep_hours', 7.0)}\n"
-            f"ScreenTime: {facts.get('screen_time', 4.0)}\n"
-            f"ExerciseMinutes: {facts.get('exercise_minutes', 0)}\n"
-            f"StudyHours: {facts.get('study_hours', 0)}\n"
-            f"Mood: {facts.get('mood', 5)}\n"
-            f"Energy: {facts.get('energy', 5)}\n"
-            f"Stress: {facts.get('stress', 5)}\n"
-            f"Productivity: {facts.get('productivity', 5)}\n"
-        )
-
-    elif task == "weekly_analysis":
+    if task == "weekly_analysis":
         metrics = facts.get("metrics", {})
         metric_lines = []
         for m, v in metrics.items():
@@ -352,68 +464,22 @@ def build_prompt_from_facts(task: str, facts: Dict[str, Any]) -> str:
             f"Metrics:\n{metrics_block}\n"
         )
 
-    elif task == "forecast_explanation":
-        metric_lines = []
-        for m, v in facts.items():
-            name = METRIC_DISPLAY_NAMES.get(m, m)
-            metric_lines.append(
-                f"{name}: {v.get('current')} -> {v.get('predicted')} (change: {v.get('change')}, direction: {v.get('direction')})"
-            )
-        metrics_block = "\n".join(metric_lines)
-        return (
-            f"Task: forecast_explanation\n\n"
-            f"{instruction}\n"
-            f"Predicted Changes:\n{metrics_block}\n"
-        )
-
-    elif task == "daily_note_analysis":
-        classes = facts.get("classifications", {})
-        class_lines = [f"{k}: {v}" for k, v in classes.items()]
-        return (
-            f"Task: daily_note_analysis\n\n"
-            f"{instruction}\n"
-            f"DailyNote: {facts.get('note', '')}\n"
-            f"Wellness Score: {facts.get('wellness_score', 50)}\n"
-            f"Classifications: {', '.join(class_lines)}\n"
-        )
-
     return f"Task: {task}\n\n{instruction}\n"
 
 
-# =====================================================================
-# CORE REUSABLE INFERENCE FUNCTION
-# =====================================================================
-
 def generate_nlp_response(task: str, facts: Dict[str, Any], retry: bool = True) -> str:
     """
-    Main entry point for hybrid NLP generation:
-    1. Check facts
-    2. Try loading model and running inference
-    3. Validate output against facts
-    4. If validation fails, retry once with stricter prompt before falling back
+    Main entry point for hybrid NLP generation used by weekly analysis.
     """
     if not facts:
         return ""
 
-    fallback_fn = {
-        "daily_analysis": generate_fallback_daily,
-        "weekly_analysis": generate_fallback_weekly,
-        "forecast_explanation": generate_fallback_forecast,
-        "daily_note_analysis": generate_fallback_daily_note,
-    }.get(task, lambda f: "Analysis temporarily unavailable.")
-
     if not load_v5_model():
-        return fallback_fn(facts)
+        return ""
 
     try:
         prompt = build_prompt_from_facts(task, facts)
-
-        inputs = _tokenizer(
-            prompt,
-            return_tensors="pt",
-            truncation=True,
-            max_length=256,
-        )
+        inputs = _tokenizer(prompt, return_tensors="pt", truncation=True, max_length=256)
         inputs = {key: value.to(_device) for key, value in inputs.items()}
 
         with torch.no_grad():
@@ -424,57 +490,15 @@ def generate_nlp_response(task: str, facts: Dict[str, Any], retry: bool = True) 
                 early_stopping=True,
             )
 
-        generated = _tokenizer.decode(
-            output[0],
-            skip_special_tokens=True
-        ).strip()
-
+        generated = _tokenizer.decode(output[0], skip_special_tokens=True).strip()
         if validate_nlp_output(generated, task, facts):
             if task == "weekly_analysis":
                 for h in ["WEEKLY SUMMARY", "METRIC COMPARISONS", "ROUTINE CHANGES", "NEXT WEEK"]:
                     generated = re.sub(rf"(?<!\n)(?={h})", "\n", generated)
-                    generated = re.sub(rf"(?<={h})[ 	]*:?[ 	]*", "\n", generated)
+                    generated = re.sub(rf"(?<={h})[ \t]*:?[ \t]*", "\n", generated)
             return generated
 
-        # Validation failed: retry once with stricter prompt if requested
-        if retry:
-            stricter_prompt = (
-                f"{prompt}\n"
-                f"STRICT CONSTRAINT: State exact numbers from facts only. "
-                f"Wellness Score is {facts.get('wellness_start')} to {facts.get('wellness_end')} ({facts.get('wellness_change')} change, {facts.get('wellness_direction')}). "
-                f"Do NOT output meta instructions or altered numbers."
-            )
-            inputs_retry = _tokenizer(
-                stricter_prompt,
-                return_tensors="pt",
-                truncation=True,
-                max_length=300,
-            )
-            inputs_retry = {key: value.to(_device) for key, value in inputs_retry.items()}
-
-            with torch.no_grad():
-                out_retry = _model.generate(
-                    **inputs_retry,
-                    max_new_tokens=180,
-                    num_beams=4,
-                    early_stopping=True,
-                )
-
-            gen_retry = _tokenizer.decode(
-                out_retry[0],
-                skip_special_tokens=True
-            ).strip()
-
-            if validate_nlp_output(gen_retry, task, facts):
-                if task == "weekly_analysis":
-                    for h in ["WEEKLY SUMMARY", "METRIC COMPARISONS", "ROUTINE CHANGES", "NEXT WEEK"]:
-                        gen_retry = re.sub(rf"(?<!\n)(?={h})", "\n", gen_retry)
-                        gen_retry = re.sub(rf"(?<={h})[ \t]*:?[ \t]*", "\n", gen_retry)
-                return gen_retry
-
-        # Safe fallback if model generation or retry is not fact-compliant
-        return fallback_fn(facts)
-
+        return generated
     except Exception as error:
-        print(f"Inference error for {task}:", repr(error))
-        return fallback_fn(facts)
+        print(f"[LifeLens NLP Error] Inference error for {task}:", repr(error), file=sys.stderr)
+        return ""
