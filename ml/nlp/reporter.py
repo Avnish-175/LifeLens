@@ -1,4 +1,5 @@
 import os
+import re
 
 try:
     import torch
@@ -40,6 +41,545 @@ def _load_model():
         return False
 
 
+# ---------------------------------------------------------------------------
+# Metric-aware direction logic (done in Python, never by the language model)
+# ---------------------------------------------------------------------------
+
+# polarity: "higher_better" | "lower_better" | "neutral_range"
+_METRICS = {
+    "Mood":            {"label": "Mood",        "polarity": "higher_better", "tol": 0.05, "scale": 10.0},
+    "Energy":          {"label": "Energy",      "polarity": "higher_better", "tol": 0.05, "scale": 10.0},
+    "Productivity":    {"label": "Productivity", "polarity": "higher_better", "tol": 0.05, "scale": 10.0},
+    "ExerciseMinutes": {"label": "Exercise",    "polarity": "higher_better", "tol": 0.5,  "scale": 60.0},
+    "Stress":          {"label": "Stress",      "polarity": "lower_better",  "tol": 0.05, "scale": 10.0},
+    "ScreenTime":      {"label": "Screen time", "polarity": "lower_better",  "tol": 0.05, "scale": 8.0},
+    "SleepHours":      {"label": "Sleep",       "polarity": "neutral_range", "tol": 0.05, "scale": 8.0},
+}
+
+_METRIC_ORDER = [
+    "Mood", "Energy", "Stress", "Productivity",
+    "SleepHours", "ExerciseMinutes", "ScreenTime",
+]
+
+_SLEEP_HEALTHY_LOW = 7.0
+_SLEEP_HEALTHY_HIGH = 9.0
+
+_FORECAST_KEYS = ("Tomorrow Outlook", "Main Factor", "Pattern", "Priority")
+
+_FALLBACK_FORECAST = {
+    "Tomorrow Outlook": "No forecast explanation available.",
+    "Main Factor": "No forecast explanation available.",
+    "Pattern": "No forecast explanation available.",
+    "Priority": "No forecast explanation available.",
+}
+
+
+def _lookup(source, key):
+    """Case-insensitive value lookup that works for dicts, Series and None."""
+    if source is None:
+        return None
+    try:
+        if hasattr(source, "get") and key in source:
+            return source.get(key)
+    except Exception:
+        pass
+    try:
+        items = source.items()
+    except Exception:
+        return None
+    wanted = key.lower().replace("_", "")
+    for k, v in items:
+        if str(k).lower().replace("_", "") == wanted:
+            return v
+    return None
+
+
+def _to_float(value):
+    try:
+        if value is None:
+            return None
+        number = float(value)
+        if number != number:  # NaN
+            return None
+        if number in (float("inf"), float("-inf")):
+            return None
+        return number
+    except (TypeError, ValueError):
+        return None
+
+
+def _fmt(metric, value):
+    if metric == "ExerciseMinutes":
+        return f"{value:.0f}"
+    return f"{value:.1f}"
+
+
+def _sleep_distance(hours):
+    if hours < _SLEEP_HEALTHY_LOW:
+        return _SLEEP_HEALTHY_LOW - hours
+    if hours > _SLEEP_HEALTHY_HIGH:
+        return hours - _SLEEP_HEALTHY_HIGH
+    return 0.0
+
+
+def _classify_change(metric, current, predicted):
+    """
+    Return (change_type, status).
+
+    change_type: "increase" | "decrease" | "same"   (pure numeric direction)
+    status:      "improving" | "declining" | "worsening" | "stable"
+                 | "increasing" | "decreasing"       (neutral, sleep only)
+    """
+    spec = _METRICS[metric]
+    delta = predicted - current
+
+    if abs(delta) < spec["tol"]:
+        return "same", "stable"
+
+    change_type = "increase" if delta > 0 else "decrease"
+    polarity = spec["polarity"]
+
+    if polarity == "higher_better":
+        status = "improving" if delta > 0 else "declining"
+    elif polarity == "lower_better":
+        status = "worsening" if delta > 0 else "improving"
+    else:  # sleep: neutral unless it clearly moves toward / away from healthy range
+        before = _sleep_distance(current)
+        after = _sleep_distance(predicted)
+        if after < before:
+            status = "improving"
+        elif after > before:
+            status = "worsening"
+        else:
+            status = "increasing" if delta > 0 else "decreasing"
+
+    return change_type, status
+
+
+def _describe_status(metric, change_type, status):
+    """Short human phrase for a metric's status, metric-aware."""
+    if status == "stable":
+        return "stable"
+    if metric == "Stress":
+        return "increasing stress, worsening" if change_type == "increase" else "decreasing stress, improving"
+    if metric == "ScreenTime":
+        return ("increasing screen time, potentially worsening"
+                if change_type == "increase"
+                else "decreasing screen time, potentially improving")
+    if metric == "ExerciseMinutes":
+        return "increasing activity, improving" if change_type == "increase" else "decreasing activity, declining"
+    if metric == "SleepHours":
+        verb = "increasing" if change_type == "increase" else "decreasing"
+        if status == "improving":
+            return f"{verb}, moving toward a healthy range"
+        if status == "worsening":
+            return f"{verb}, moving away from a healthy range"
+        return verb
+    return status
+
+
+def _build_forecast_facts(prediction, latest):
+    """
+    Build authoritative, Python-calculated forecast facts.
+    Returns an ordered list of dicts (one per predicted metric).
+    """
+    facts = []
+    for metric in _METRIC_ORDER:
+        current = _to_float(_lookup(latest, metric))
+        predicted = _to_float(_lookup(prediction, metric))
+        if predicted is None:
+            continue
+        if current is None:
+            facts.append({
+                "metric": metric,
+                "name": _METRICS[metric]["label"],
+                "current": None,
+                "predicted": predicted,
+                "delta": None,
+                "change_type": None,
+                "status": None,
+                "phrase": None,
+                "magnitude": 0.0,
+            })
+            continue
+
+        change_type, status = _classify_change(metric, current, predicted)
+        delta = predicted - current
+        facts.append({
+            "metric": metric,
+            "name": _METRICS[metric]["label"],
+            "current": current,
+            "predicted": predicted,
+            "delta": delta,
+            "change_type": change_type,
+            "status": status,
+            "phrase": _describe_status(metric, change_type, status),
+            "magnitude": abs(delta) / _METRICS[metric]["scale"],
+        })
+    return facts
+
+
+def _forecast_facts_text(facts):
+    lines = []
+    for f in facts:
+        if f["current"] is None:
+            lines.append(f"{f['name']}: predicted {_fmt(f['metric'], f['predicted'])} (no current value)")
+        else:
+            lines.append(
+                f"{f['name']}: {_fmt(f['metric'], f['current'])} -> "
+                f"{_fmt(f['metric'], f['predicted'])} ({f['phrase']})"
+            )
+    return "\n".join(lines)
+
+
+def _facts_for_v5(facts):
+    """Shape Python-calculated facts like the V5 inference prompt expects."""
+    out = {}
+    for f in facts:
+        if f["current"] is None:
+            continue
+        direction = "unchanged" if f["status"] == "stable" else f["status"]
+        out[f["metric"]] = {
+            "current": round(f["current"], 1),
+            "predicted": round(f["predicted"], 1),
+            "change": round(f["delta"], 1),
+            "direction": direction,
+        }
+    return out
+
+
+def _join_names(names):
+    names = list(names)
+    if not names:
+        return ""
+    if len(names) == 1:
+        return names[0]
+    if len(names) == 2:
+        return f"{names[0]} and {names[1]}"
+    return ", ".join(names[:-1]) + f", and {names[-1]}"
+
+
+def _deterministic_forecast(facts):
+    """Safe, always-correct structured forecast built purely from Python facts."""
+    comparable = [f for f in facts if f["current"] is not None]
+    if not comparable:
+        return dict(_FALLBACK_FORECAST)
+
+    improving = [f for f in comparable if f["status"] == "improving"]
+    worsening = [f for f in comparable if f["status"] in ("worsening", "declining")]
+    neutral = [f for f in comparable if f["status"] in ("increasing", "decreasing")]
+
+    imp_names = [f["name"].lower() for f in improving]
+    wor_names = [f["name"].lower() for f in worsening]
+
+    # Tomorrow Outlook
+    if improving and worsening:
+        if len(improving) > len(worsening):
+            tone = "generally positive"
+        elif len(worsening) > len(improving):
+            tone = "generally cautious"
+        else:
+            tone = "balanced"
+        outlook = (
+            f"The forecast is mixed but {tone}, with improvement expected in "
+            f"{_join_names(imp_names)}, while {_join_names(wor_names)} may move in a less favourable direction."
+        )
+    elif improving:
+        outlook = f"The forecast is positive, with improvement expected in {_join_names(imp_names)}."
+    elif worsening:
+        outlook = (
+            f"The forecast suggests some pressure tomorrow, with {_join_names(wor_names)} "
+            f"moving in a less favourable direction."
+        )
+    elif neutral:
+        outlook = "The forecast is largely steady, with only neutral changes expected."
+    else:
+        outlook = "The forecast shows stable values across tracked metrics tomorrow."
+
+    # Main Factor: largest normalised change
+    moving = [f for f in comparable if f["status"] != "stable"]
+    if moving:
+        top = max(moving, key=lambda f: f["magnitude"])
+        main = (
+            f"{top['name']} shows the largest predicted change, moving from "
+            f"{_fmt(top['metric'], top['current'])} to {_fmt(top['metric'], top['predicted'])} "
+            f"({top['phrase']})."
+        )
+        others = [f for f in moving if f is not top and f["status"] in ("worsening", "declining")]
+        if top["status"] == "improving" and others:
+            o = max(others, key=lambda f: f["magnitude"])
+            main += (
+                f" {o['name']} also changes from {_fmt(o['metric'], o['current'])} "
+                f"to {_fmt(o['metric'], o['predicted'])} ({o['phrase']})."
+            )
+    else:
+        main = "No metric is predicted to change meaningfully tomorrow."
+
+    # Pattern
+    if improving and worsening:
+        if len(improving) >= len(worsening):
+            pattern = (
+                f"Most movement is positive in {_join_names(imp_names[:3])}, "
+                f"but {_join_names(wor_names[:2])} may offset some of those gains."
+            )
+        else:
+            pattern = (
+                f"Several metrics ({_join_names(wor_names[:3])}) are trending in a less favourable "
+                f"direction, with gains limited to {_join_names(imp_names[:2])}."
+            )
+    elif improving:
+        pattern = f"Predicted changes are consistently positive, led by {_join_names(imp_names[:2])}."
+    elif worsening:
+        pattern = f"Predicted changes lean toward {_join_names(wor_names[:3])} becoming less favourable."
+    else:
+        pattern = "Predicted values stay close to today's levels, suggesting a steady day."
+
+    # Priority
+    if worsening:
+        target = max(worsening, key=lambda f: f["magnitude"])
+        if improving:
+            keep = max(improving, key=lambda f: f["magnitude"])
+            priority = (
+                f"Keep supporting {keep['name'].lower()} while taking steps to manage "
+                f"{target['name'].lower()} tomorrow."
+            )
+        else:
+            priority = f"Focus on managing {target['name'].lower()} tomorrow."
+    elif improving:
+        keep = max(improving, key=lambda f: f["magnitude"])
+        priority = f"Maintain the habits supporting {keep['name'].lower()} to hold on to the predicted gains."
+    else:
+        priority = "Keep your routine consistent tomorrow to preserve stable levels."
+
+    return {
+        "Tomorrow Outlook": outlook,
+        "Main Factor": main,
+        "Pattern": pattern,
+        "Priority": priority,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Section parsing (separates sections only; never judges numbers)
+# ---------------------------------------------------------------------------
+
+_HEADING_ALIASES = {
+    "Tomorrow Outlook": [
+        r"TOMORROW(?:'S|S)?\s+OUTLOOK", r"FORECAST", r"OUTLOOK", r"OVERALL",
+    ],
+    "Main Factor": [
+        r"MAIN\s+FACTOR", r"KEY\s+FACTOR", r"EXPECTED\s+CHANGES",
+    ],
+    "Pattern": [
+        r"PATTERN(?:\s+DETECTED)?", r"WATCH\s+FOR",
+    ],
+    "Priority": [
+        r"PRIORITY", r"TOMORROW(?:'S|S)?\s+FOCUS", r"FOCUS",
+    ],
+}
+
+_EMOJI_RE = re.compile("[\U0001F300-\U0001FAFF\u2600-\u27BF\uFE0F]+")
+
+
+def _parse_forecast_sections(raw):
+    """
+    Split raw model text into the four forecast fields.
+    Returns a dict containing only the sections that were found with content.
+    """
+    if not raw:
+        return {}
+
+    text = str(raw).replace("**", "").replace("__", "")
+    text = _EMOJI_RE.sub(" ", text)
+    text = re.sub(r"(?m)^[ \t]*#+[ \t]*", "", text)
+    # V5 uses a bare "TOMORROW" heading on its own line for the action section.
+    text = re.sub(r"(?im)^[ \t]*TOMORROW[ \t]*:?[ \t]*$", "TOMORROW FOCUS:", text)
+
+    alt_to_label = []
+    for label, aliases in _HEADING_ALIASES.items():
+        for alias in aliases:
+            alt_to_label.append((alias, label))
+    alt_to_label.sort(key=lambda x: -len(x[0]))  # more specific aliases first
+    combined = "|".join(f"(?P<g{i}>{alias})" for i, (alias, _) in enumerate(alt_to_label))
+
+    heading_re = re.compile(
+        rf"(?<![A-Za-z'])(?:{combined})(?![A-Za-z'])[ \t]*(?::|(?=\n|$))",
+        re.IGNORECASE,
+    )
+
+    hits = []
+    for m in heading_re.finditer(text):
+        label = None
+        for i, (_, lab) in enumerate(alt_to_label):
+            if m.group(f"g{i}") is not None:
+                label = lab
+                break
+        if label:
+            hits.append((m.start(), m.end(), label))
+
+    sections = {}
+    for idx, (_, end, label) in enumerate(hits):
+        nxt = hits[idx + 1][0] if idx + 1 < len(hits) else len(text)
+        content = text[end:nxt].strip(" \t\n:-")
+        content = re.sub(r"\s+", " ", content).strip()
+        if content and label not in sections:
+            sections[label] = content
+    return sections
+
+
+# ---------------------------------------------------------------------------
+# Validation of model wording against Python facts
+# ---------------------------------------------------------------------------
+
+_NUMBER_RE = re.compile(r"\d+(?:\.\d+)?")
+_WEEKLY_LEAK_MARKERS = (
+    "weekly summary", "biggest improvement", "biggest concern",
+    "pattern detected", "this week", "weekly overview", "next week",
+)
+_BAD_WORDS_FOR_IMPROVING = ("declin", "worsen", "deteriorat")
+_BAD_WORDS_FOR_HIGHER_BETTER_IMPROVING = ("decreas", "drop", "fall", "fell")
+_BAD_WORDS_FOR_WORSENING = ("improv",)
+
+
+def _allowed_numbers(facts):
+    allowed = {"10", "100", "1"}
+    for f in facts:
+        for key in ("current", "predicted"):
+            v = f[key]
+            if v is None:
+                continue
+            allowed.add(_fmt(f["metric"], v))
+            allowed.add(f"{v:.0f}")
+            allowed.add(f"{v:.1f}")
+            allowed.add(str(float(f"{v:.1f}")))
+    return allowed
+
+
+def _direction_consistent(text, facts):
+    """
+    Reject wording that contradicts Python's direction for a metric.
+    Only sentences that mention exactly one metric are checked, so mixed
+    sentences such as "energy improves while stress worsens" are left alone.
+    """
+    comparable = [f for f in facts if f["current"] is not None]
+    for sentence in re.split(r"(?<=[.!?])\s+", text):
+        low = sentence.lower()
+        mentioned = [f for f in comparable if f["name"].lower() in low]
+        if len(mentioned) != 1:
+            continue
+        f = mentioned[0]
+        status = f["status"]
+        if status == "improving":
+            if any(w in low for w in _BAD_WORDS_FOR_IMPROVING):
+                return False
+            if (_METRICS[f["metric"]]["polarity"] == "higher_better"
+                    and any(w in low for w in _BAD_WORDS_FOR_HIGHER_BETTER_IMPROVING)):
+                return False
+        elif status in ("worsening", "declining"):
+            if any(w in low for w in _BAD_WORDS_FOR_WORSENING):
+                return False
+        elif status == "stable":
+            if any(w in low for w in ("improv", "declin", "worsen")):
+                return False
+    return True
+
+
+def _section_is_safe(text, allowed, facts):
+    """Reject sections that leak weekly content, invent numbers, or contradict directions."""
+    if "<" in text or ">" in text:
+        return False
+    lower = text.lower()
+    if any(marker in lower for marker in _WEEKLY_LEAK_MARKERS):
+        return False
+    for number in _NUMBER_RE.findall(text):
+        if number not in allowed:
+            return False
+    return _direction_consistent(text, facts)
+
+
+# ---------------------------------------------------------------------------
+# Text generation helpers
+# ---------------------------------------------------------------------------
+
+def _generate_text(prompt, max_new_tokens=160):
+    inputs = _tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512)
+    inputs = {key: value.to(_device) for key, value in inputs.items()}
+    with torch.no_grad():
+        output = _model.generate(
+            **inputs,
+            max_new_tokens=max_new_tokens,
+            num_beams=4,
+            early_stopping=True,
+        )
+    return _tokenizer.decode(output[0], skip_special_tokens=True).strip()
+
+
+def _generate_v5_forecast_text(facts):
+    """
+    Wording from the V5 model (ml/nlp/inference.py), fed Python-corrected facts.
+    Returns None if V5 is unavailable. Its deterministic fallback text is never
+    used here, because it cannot be told apart from model output.
+    """
+    try:
+        from ml.nlp import inference
+        v5_facts = _facts_for_v5(facts)
+        if not v5_facts or not inference.load_v5_model():
+            return None
+        prompt = inference.build_prompt_from_facts("forecast_explanation", v5_facts)
+        inputs = inference._tokenizer(
+            prompt, return_tensors="pt", truncation=True, max_length=256
+        )
+        inputs = {k: v.to(inference._device) for k, v in inputs.items()}
+        with torch.no_grad():
+            output = inference._model.generate(
+                **inputs, max_new_tokens=180, num_beams=4, early_stopping=True
+            )
+        text = inference._tokenizer.decode(output[0], skip_special_tokens=True).strip()
+        return text or None
+    except Exception as error:
+        print("V5 forecast generation unavailable:", repr(error))
+        return None
+
+
+def _generate_legacy_forecast_text(facts):
+    """Wording from the model loaded by this module."""
+    if not _load_model():
+        return None
+    facts_text = _forecast_facts_text(facts)
+    prompt = f"""Explain tomorrow's predicted wellness changes for a LifeLens user.
+
+TOMORROW'S FORECAST (current -> predicted, with direction already calculated):
+{facts_text}
+
+Generate exactly 4 sections using these exact headings:
+
+TOMORROW OUTLOOK:
+Summarize the overall forecast for tomorrow.
+
+MAIN FACTOR:
+Name the metric with the largest predicted change and describe it.
+
+PATTERN:
+Describe how the predicted changes relate to each other.
+
+PRIORITY:
+Give one practical action for tomorrow.
+
+Rules:
+- The direction labels in parentheses are authoritative; never contradict them.
+- Stress and screen time are better when lower.
+- Use only the numbers shown above.
+- Do not invent causes, events, or diagnoses.
+- Do not include weekly summaries or weekly trends.
+- Keep each section to one or two sentences.
+"""
+    return _generate_text(prompt, max_new_tokens=200)
+
+
+# ---------------------------------------------------------------------------
+# Existing helpers
+# ---------------------------------------------------------------------------
+
 def _build_history_text(history):
     if history is None or history.empty:
         return "No recent history available."
@@ -56,9 +596,19 @@ def _build_history_text(history):
     return "\n".join(lines)
 
 
-def _build_prediction_text(prediction):
+def _build_prediction_text(prediction, latest=None):
+    """Tomorrow's prediction; when current values exist, Python-calculated directions are included."""
     if not prediction:
         return "No tomorrow prediction available."
+
+    if latest is not None:
+        try:
+            facts = _build_forecast_facts(prediction, latest)
+            if facts and any(f["current"] is not None for f in facts):
+                return _forecast_facts_text(facts)
+        except Exception as error:
+            print("Prediction direction build error:", repr(error))
+
     return (
         f"Sleep: {prediction.get('SleepHours', 'N/A')}h, "
         f"Mood: {prediction.get('Mood', 'N/A')}/10, "
@@ -139,8 +689,8 @@ RECENT HISTORY (up to 7 latest check-ins)
 DAILY NOTE
 {note_text}
 
-TOMORROW'S EXISTING ML PREDICTION
-{_build_prediction_text(tomorrow_prediction)}
+TOMORROW'S EXISTING ML PREDICTION (directions calculated by Python)
+{_build_prediction_text(tomorrow_prediction, latest)}
 
 Generate exactly 4 wellness insights using these exact headings:
 
@@ -168,28 +718,12 @@ Rules:
 - Do not add introductions, conclusions, numbering, or extra headings.
 """
 
-        inputs = _tokenizer(
-            prompt, return_tensors="pt", truncation=True, max_length=512
-        )
-        inputs = {key: value.to(_device) for key, value in inputs.items()}
-
-        with torch.no_grad():
-            output = _model.generate(
-                **inputs,
-                max_new_tokens=160,
-                num_beams=4,
-                early_stopping=True,
-            )
-
-        report = _tokenizer.decode(
-            output[0], skip_special_tokens=True
-        ).strip()
+        report = _generate_text(prompt, max_new_tokens=160)
         return _clean_report(report) if report else None
 
     except Exception as error:
         print("NLP report error:", repr(error))
         return None
-
 
 
 def explain_tomorrow_forecast(
@@ -199,12 +733,12 @@ def explain_tomorrow_forecast(
     daily_note=None
 ):
     """
-    Generate an AI explanation of Tomorrow's Forecast.
+    Explain Tomorrow's Forecast.
 
-    Uses the V5 hybrid pipeline (ml/nlp/inference.py):
-    - Deterministic forecast facts are built from src/nlp_facts.py
-    - The V5 FLAN-T5 model explains those facts via generate_nlp_response
-    - Falls back to deterministic text if model is unavailable or fails
+    Python calculates every direction (metric-aware). The NLP models only word
+    the already-calculated facts (V5 model first, then this module's model).
+    Each generated section is validated; anything wrong or missing is replaced
+    by a deterministic, fact-correct sentence.
 
     Returns a dictionary with 4 keys:
         "Tomorrow Outlook", "Main Factor", "Pattern", "Priority"
@@ -213,83 +747,49 @@ def explain_tomorrow_forecast(
     if not prediction:
         return None
 
-    import re as _re
-
-    # Fallback defaults (returned if model fails or no sections found)
-    _defaults = {
-        "Tomorrow Outlook": "Tomorrow's forecast projects balanced indicators based on your recent habit patterns.",
-        "Main Factor": "Core factors remain steady.",
-        "Pattern": "Trends reflect current stability across your recorded wellness routines.",
-        "Priority": "Maintain regular sleep timing and keep your preparation balanced tomorrow.",
-    }
-
     try:
-        from src.nlp_facts import build_forecast_facts
-        from ml.nlp.inference import generate_nlp_response
+        # Current values: explicit `latest`, otherwise most recent history row.
+        current = latest
+        if current is None and history is not None:
+            try:
+                if not history.empty:
+                    current = history.iloc[-1]
+            except Exception:
+                current = None
 
-        # Build deterministic forecast facts (authoritative source of truth)
-        forecast_facts = build_forecast_facts(
-            current=latest if latest is not None else {},
-            predicted=prediction,
-        )
+        facts = _build_forecast_facts(prediction, current)
+        comparable = [f for f in facts if f["current"] is not None]
+        if not comparable:
+            return dict(_FALLBACK_FORECAST)
 
-        if not forecast_facts:
-            return dict(_defaults)
+        result = _deterministic_forecast(facts)
+        allowed = _allowed_numbers(facts)
+        accepted = set()
 
-        # V5 hybrid pipeline: facts -> NLP explanation string
-        raw = generate_nlp_response("forecast_explanation", forecast_facts)
+        for generator in (_generate_v5_forecast_text, _generate_legacy_forecast_text):
+            if len(accepted) == len(_FORECAST_KEYS):
+                break
+            try:
+                raw = generator(facts)
+                sections = _parse_forecast_sections(raw)
+                for key in _FORECAST_KEYS:
+                    if key in accepted:
+                        continue
+                    text = sections.get(key)
+                    if text and _section_is_safe(text, allowed, facts):
+                        result[key] = text
+                        accepted.add(key)
+            except Exception as error:
+                print("Forecast NLP generation error:", repr(error))
 
-        if not raw or not raw.strip():
-            return dict(_defaults)
-
-        # Parse V5 output string into 4 named cards.
-        # V5 produces:  FORECAST ... EXPECTED CHANGES ... WATCH FOR ... TOMORROW ...
-        section_regexes = [
-            ("Tomorrow Outlook", r"(?:^|\s+)(?:FORECAST|TOMORROW(?:'S)?\s+OUTLOOK):?"),
-            ("Main Factor",      r"(?:\s+)(?:EXPECTED\s+CHANGES|MAIN\s+FACTOR|KEY\s+FACTOR|BIGGEST\s+(?:IMPROVEMENT|CONCERN)):?"),
-            ("Pattern",          r"(?:\s+)(?:WATCH\s+FOR|PATTERN(?:\s+DETECTED)?):?"),
-            ("Priority",         r"(?:\s+)(?:TOMORROW(?:'S)?(?!\s+OUTLOOK)(?:\s+(?:FOCUS|PRIORITY|ACTION))?|PRIORITY|NEXT\s+WEEK(?:'S)?\s+PRIORITY):?"),
-        ]
-
-        positions = []
-        for label, regex in section_regexes:
-            m = _re.search(regex, raw, _re.IGNORECASE)
-            if m:
-                positions.append((m.start(), m.end(), label))
-
-        positions.sort(key=lambda x: x[0])
-        explanation = dict(_defaults)
-
-        if positions:
-            for i, (_, end_pos, label) in enumerate(positions):
-                next_start = positions[i + 1][0] if i + 1 < len(positions) else len(raw)
-                content = raw[end_pos:next_start].strip()
-                if content:
-                    explanation[label] = content
-        else:
-            # Last-resort: try numbered-item split
-            parts = _re.split(r'(?:^|\s+)\d+\.\s+(?=[A-Z])', raw)
-            parts = [p.strip() for p in parts if p.strip()]
-            for i, label in enumerate(["Tomorrow Outlook", "Main Factor", "Pattern", "Priority"]):
-                if i < len(parts) and parts[i]:
-                    explanation[label] = parts[i]
-
-        # Contextual refinement if Pattern was not explicitly generated
-        if explanation["Pattern"] == _defaults["Pattern"] and forecast_facts:
-            improving = [m for m, v in forecast_facts.items() if v.get("direction") == "improving"]
-            declining = [m for m, v in forecast_facts.items() if v.get("direction") in ("declining", "worsening")]
-            if improving and not declining:
-                explanation["Pattern"] = f"Positive momentum projected across {', '.join(improving[:2])}."
-            elif declining and not improving:
-                explanation["Pattern"] = f"Watch for dips in {', '.join(declining[:2])} during tomorrow's routine."
-            elif improving and declining:
-                explanation["Pattern"] = f"Mixed trajectory: gains in {improving[0]} balanced by pressure in {declining[0]}."
-
-        return explanation
+        for key in _FORECAST_KEYS:
+            if not str(result.get(key, "")).strip():
+                result[key] = _FALLBACK_FORECAST[key]
+        return result
 
     except Exception as error:
         print("Forecast explanation error:", repr(error))
-        return dict(_defaults)
+        return dict(_FALLBACK_FORECAST)
 
 
 def explain_weekly_facts(weekly_facts, daily_notes=None):
@@ -369,31 +869,7 @@ Rules:
 - Output only the four requested sections.
 """
 
-        inputs = _tokenizer(
-            prompt,
-            return_tensors="pt",
-            truncation=True,
-            max_length=512,
-        )
-
-        inputs = {
-            key: value.to(_device)
-            for key, value in inputs.items()
-        }
-
-        with torch.no_grad():
-            output = _model.generate(
-                **inputs,
-                max_new_tokens=160,
-                num_beams=4,
-                early_stopping=True,
-            )
-
-        report = _tokenizer.decode(
-            output[0],
-            skip_special_tokens=True
-        ).strip()
-
+        report = _generate_text(prompt, max_new_tokens=160)
         return report if report else None
 
     except Exception as error:
