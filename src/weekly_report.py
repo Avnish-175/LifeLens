@@ -1,3 +1,115 @@
+def calculate_weekly_facts(data):
+    """
+    Calculate factual weekly statistics for AI explanation.
+
+    Python is the source of truth.
+    The LLM should only explain these calculated facts.
+    """
+
+    if data is None or data.empty:
+        return {}
+
+    # Use only available records
+    data = data.copy()
+
+    # Remove rows where all tracked metrics are missing
+    metrics = [
+        "SleepHours",
+        "ScreenTime",
+        "ExerciseMinutes",
+        "Mood",
+        "Energy",
+        "Stress",
+        "Productivity",
+    ]
+
+    available_metrics = [m for m in metrics if m in data.columns]
+
+    if not available_metrics:
+        return {}
+
+    data = data.dropna(
+        subset=available_metrics,
+        how="all"
+    )
+
+    if data.empty:
+        return {}
+
+    # Latest 7 records = current period
+    current = data.tail(7).copy()
+
+    # Previous 7 records only exist when we have 14+ records
+    previous = None
+
+    if len(data) >= 14:
+        previous = data.iloc[-14:-7].copy()
+
+    facts = {
+        "days_available": len(data),
+        "current_period_days": len(current),
+        "previous_period_available": previous is not None,
+        "metrics": {},
+    }
+
+    def calculate_trend(change):
+        if change is None:
+            return "insufficient_data"
+
+        if change > 0.5:
+            return "increasing"
+        elif change < -0.5:
+            return "decreasing"
+        else:
+            return "stable"
+
+    for metric in available_metrics:
+
+        current_values = current[metric].dropna()
+
+        if current_values.empty:
+            continue
+
+        current_average = round(
+            float(current_values.mean()),
+            2
+        )
+
+        previous_average = None
+        change = None
+
+        if previous is not None:
+            previous_values = previous[metric].dropna()
+
+            if not previous_values.empty:
+                previous_average = round(
+                    float(previous_values.mean()),
+                    2
+                )
+
+                change = round(
+                    current_average - previous_average,
+                    2
+                )
+
+        metric_facts = {
+            "current_average": current_average,
+            "previous_average": previous_average,
+            "change": change,
+            "trend": calculate_trend(change),
+        }
+
+        # Additional exercise-specific fact
+        if metric == "ExerciseMinutes":
+            metric_facts["exercise_days"] = int(
+                (current_values > 0).sum()
+            )
+
+        facts["metrics"][metric] = metric_facts
+
+    return facts
+
+
 def generate_weekly_report(data):
 
     if data.empty:

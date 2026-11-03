@@ -43,7 +43,10 @@ from src.charts import (
 )
 from src.recommendations import generate_recommendations
 from src.pattern_analysis import analyze_patterns
-from src.weekly_report import generate_weekly_report
+from src.weekly_report import (
+    generate_weekly_report,
+    calculate_weekly_facts
+)
 from src.correlation import get_correlation_matrix
 from src.monthly_report import generate_monthly_report
 from src.forecast import (
@@ -57,7 +60,11 @@ from src.intelligence import (
     get_biggest_discovery,
     get_todays_focus
 )
-from ml.nlp.reporter import generate_wellness_report, explain_tomorrow_forecast
+from ml.nlp.reporter import (
+    generate_wellness_report,
+    explain_weekly_facts,
+    explain_tomorrow_forecast
+)
 from src.data_manager import check_data_file
 
 @st.dialog("Check-in already exists")
@@ -166,6 +173,8 @@ insights = []
 trend_analysis = None
 ml_prediction = None
 nlp_wellness_report = None
+weekly_facts = {}
+weekly_ai_analysis = None
 forecast_explanation = None
 
 
@@ -238,7 +247,18 @@ if not data.empty:
 if not data.empty:
     recommendations = generate_recommendations(data)
     patterns = analyze_patterns(data)
+
+    # Existing weekly report remains unchanged
     weekly_report = generate_weekly_report(data)
+
+    # Python calculates factual weekly statistics
+    weekly_facts = calculate_weekly_facts(data)
+
+    # Local NLP model explains those facts
+    weekly_ai_analysis = explain_weekly_facts(
+        weekly_facts
+    )
+
     monthly_report = generate_monthly_report(data)
     correlation_matrix = get_correlation_matrix(data)
 
@@ -730,13 +750,16 @@ if selected_tab == "🏠 Dashboard":
                                 {forecast_summary}
                             </span>
                         </div>
-                        <div style="display: flex; align-items: baseline; gap: 5px; margin-bottom: 6px;">
+                        <div style="display: flex; align-items: baseline; gap: 5px; margin-bottom: 2px;">
                             <span style="font-size: 38px; font-weight: 800; line-height: 1; color: #FFFFFF; letter-spacing: -0.02em;">
                                 {t_score_str}
                             </span>
                             <span style="font-size: 16px; font-weight: 600; color: #A5B4FC;">
                                 /100 projected
                             </span>
+                        </div>
+                        <div style="font-size: 12.5px; font-weight: 700; color: #C7D2FE; margin-bottom: 6px;">
+                            {t_cat}
                         </div>
                         <div style="font-size: 13px; color: #E0E7FF; line-height: 1.4; font-weight: 450;">
                             AI projection based on your recent behavioural momentum.
@@ -1342,6 +1365,30 @@ if selected_tab == "🏠 Dashboard":
                 "the correlation heatmap yet. Record more check-ins with "
                 "varied values to reveal relationships."
             )
+
+
+    if weekly_ai_analysis:
+        st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
+        st.markdown("## 🧠 Weekly AI Analysis")
+
+        sections = weekly_ai_analysis.split("\n")
+
+        for line in sections:
+            line = line.strip()
+
+            if not line:
+                continue
+
+            if line.startswith("WEEKLY OVERVIEW") or "WEEKLY SUMMARY" in line:
+                st.markdown("### 📊 Weekly Overview")
+            elif line.startswith("KEY TREND") or "METRIC COMPARISONS" in line:
+                st.markdown("### 📈 Key Trend")
+            elif line.startswith("MAIN FACTOR") or "ROUTINE CHANGES" in line:
+                st.markdown("### 🎯 Main Factor")
+            elif line.startswith("NEXT WEEK PRIORITY") or "NEXT WEEK" in line:
+                st.markdown("### 🚀 Next Week Priority")
+            else:
+                st.write(line)
 
 
 if selected_tab == "📊 Reports":
