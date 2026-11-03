@@ -835,10 +835,31 @@ if selected_tab == "🏠 Dashboard":
     # 🔮 TOMORROW FORECAST AI EXPLANATION
     # ==========================================
     if prediction and forecast_explanation:
-        outlook_text = forecast_explanation.get("Tomorrow Outlook", "")
-        factor_text = forecast_explanation.get("Main Factor", "")
-        pattern_text = forecast_explanation.get("Pattern", "")
-        priority_text = forecast_explanation.get("Priority", "")
+        # Robust multi-key lookup with safe fallbacks
+        outlook_text = (
+            forecast_explanation.get("Tomorrow Outlook")
+            or forecast_explanation.get("outlook")
+            or forecast_explanation.get("Tomorrow's Outlook")
+            or "No insight available."
+        )
+        factor_text = (
+            forecast_explanation.get("Main Factor")
+            or forecast_explanation.get("main_factor")
+            or forecast_explanation.get("Key Factor")
+            or "No insight available."
+        )
+        pattern_text = (
+            forecast_explanation.get("Pattern")
+            or forecast_explanation.get("pattern")
+            or forecast_explanation.get("Pattern Detected")
+            or "No insight available."
+        )
+        priority_text = (
+            forecast_explanation.get("Priority")
+            or forecast_explanation.get("priority")
+            or forecast_explanation.get("Tomorrow's Focus")
+            or "No insight available."
+        )
 
         st.html(
             f"""
@@ -916,8 +937,8 @@ if selected_tab == "🏠 Dashboard":
 
     if nlp_wellness_report:
         formatted_report = str(nlp_wellness_report).strip()
-        for marker in ["2.", "3.", "4."]:
-            formatted_report = re.sub(rf"\s+(?={re.escape(marker)})", "\n\n", formatted_report)
+        for marker in ["2.", "3.", "4.", "KEY FACTOR", "PATTERN", "PRIORITY"]:
+            formatted_report = re.sub(rf"\s+(?={re.escape(marker)}:?)", "\n\n", formatted_report)
         st.html(
             f"""
             <div style="

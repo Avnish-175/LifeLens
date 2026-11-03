@@ -189,3 +189,213 @@ Rules:
     except Exception as error:
         print("NLP report error:", repr(error))
         return None
+
+
+
+def explain_tomorrow_forecast(
+    prediction,
+    latest=None,
+    history=None,
+    daily_note=None
+):
+    """
+    Generate an AI explanation of Tomorrow's Forecast.
+
+    Uses the V5 hybrid pipeline (ml/nlp/inference.py):
+    - Deterministic forecast facts are built from src/nlp_facts.py
+    - The V5 FLAN-T5 model explains those facts via generate_nlp_response
+    - Falls back to deterministic text if model is unavailable or fails
+
+    Returns a dictionary with 4 keys:
+        "Tomorrow Outlook", "Main Factor", "Pattern", "Priority"
+    or None if prediction is empty.
+    """
+    if not prediction:
+        return None
+
+    import re as _re
+
+    # Fallback defaults (returned if model fails or no sections found)
+    _defaults = {
+        "Tomorrow Outlook": "Tomorrow's forecast projects balanced indicators based on your recent habit patterns.",
+        "Main Factor": "Core factors remain steady.",
+        "Pattern": "Trends reflect current stability across your recorded wellness routines.",
+        "Priority": "Maintain regular sleep timing and keep your preparation balanced tomorrow.",
+    }
+
+    try:
+        from src.nlp_facts import build_forecast_facts
+        from ml.nlp.inference import generate_nlp_response
+
+        # Build deterministic forecast facts (authoritative source of truth)
+        forecast_facts = build_forecast_facts(
+            current=latest if latest is not None else {},
+            predicted=prediction,
+        )
+
+        if not forecast_facts:
+            return dict(_defaults)
+
+        # V5 hybrid pipeline: facts -> NLP explanation string
+        raw = generate_nlp_response("forecast_explanation", forecast_facts)
+
+        if not raw or not raw.strip():
+            return dict(_defaults)
+
+        # Parse V5 output string into 4 named cards.
+        # V5 produces:  FORECAST ... EXPECTED CHANGES ... WATCH FOR ... TOMORROW ...
+        section_regexes = [
+            ("Tomorrow Outlook", r"(?:^|\s+)(?:FORECAST|TOMORROW(?:'S)?\s+OUTLOOK):?"),
+            ("Main Factor",      r"(?:\s+)(?:EXPECTED\s+CHANGES|MAIN\s+FACTOR|KEY\s+FACTOR|BIGGEST\s+(?:IMPROVEMENT|CONCERN)):?"),
+            ("Pattern",          r"(?:\s+)(?:WATCH\s+FOR|PATTERN(?:\s+DETECTED)?):?"),
+            ("Priority",         r"(?:\s+)(?:TOMORROW(?:'S)?(?!\s+OUTLOOK)(?:\s+(?:FOCUS|PRIORITY|ACTION))?|PRIORITY|NEXT\s+WEEK(?:'S)?\s+PRIORITY):?"),
+        ]
+
+        positions = []
+        for label, regex in section_regexes:
+            m = _re.search(regex, raw, _re.IGNORECASE)
+            if m:
+                positions.append((m.start(), m.end(), label))
+
+        positions.sort(key=lambda x: x[0])
+        explanation = dict(_defaults)
+
+        if positions:
+            for i, (_, end_pos, label) in enumerate(positions):
+                next_start = positions[i + 1][0] if i + 1 < len(positions) else len(raw)
+                content = raw[end_pos:next_start].strip()
+                if content:
+                    explanation[label] = content
+        else:
+            # Last-resort: try numbered-item split
+            parts = _re.split(r'(?:^|\s+)\d+\.\s+(?=[A-Z])', raw)
+            parts = [p.strip() for p in parts if p.strip()]
+            for i, label in enumerate(["Tomorrow Outlook", "Main Factor", "Pattern", "Priority"]):
+                if i < len(parts) and parts[i]:
+                    explanation[label] = parts[i]
+
+        # Contextual refinement if Pattern was not explicitly generated
+        if explanation["Pattern"] == _defaults["Pattern"] and forecast_facts:
+            improving = [m for m, v in forecast_facts.items() if v.get("direction") == "improving"]
+            declining = [m for m, v in forecast_facts.items() if v.get("direction") in ("declining", "worsening")]
+            if improving and not declining:
+                explanation["Pattern"] = f"Positive momentum projected across {', '.join(improving[:2])}."
+            elif declining and not improving:
+                explanation["Pattern"] = f"Watch for dips in {', '.join(declining[:2])} during tomorrow's routine."
+            elif improving and declining:
+                explanation["Pattern"] = f"Mixed trajectory: gains in {improving[0]} balanced by pressure in {declining[0]}."
+
+        return explanation
+
+    except Exception as error:
+        print("Forecast explanation error:", repr(error))
+        return dict(_defaults)
+
+
+def explain_weekly_facts(weekly_facts, daily_notes=None):
+    """
+    Explain Python-calculated weekly facts using the existing local NLP model.
+
+    Python calculates the statistics.
+    The NLP model only explains them.
+    """
+    if not weekly_facts or not _load_model():
+        return None
+
+    try:
+        metrics = weekly_facts.get("metrics", {})
+        days = weekly_facts.get("days_available", 0)
+
+        facts_text = []
+        for metric, values in metrics.items():
+            facts_text.append(
+                f"{metric}: "
+                f"current_average={values.get('current_average', 'N/A')}, "
+                f"previous_average={values.get('previous_average', 'N/A')}, "
+                f"change={values.get('change', 'N/A')}, "
+                f"trend={values.get('trend', 'N/A')}"
+            )
+
+        facts_text = "\n".join(facts_text)
+
+        notes_text = "No daily notes available."
+        if daily_notes:
+            if isinstance(daily_notes, (list, tuple)):
+                valid_notes = [
+                    str(note).strip()
+                    for note in daily_notes
+                    if str(note).strip()
+                ]
+                if valid_notes:
+                    notes_text = "\n".join(
+                        f"- {note}" for note in valid_notes[-7:]
+                    )
+            else:
+                notes_text = str(daily_notes).strip()
+
+        prompt = f"""Analyze these factual LifeLens weekly wellness statistics.
+
+NUMBER OF RECORDED DAYS: {days}
+
+WEEKLY FACTS:
+{facts_text}
+
+DAILY NOTES:
+{notes_text}
+
+Generate exactly 4 sections using these exact headings:
+
+WEEKLY OVERVIEW:
+Summarize the overall week using only the supplied statistics.
+
+KEY TREND:
+Identify the most meaningful improving, declining, or stable trend supported by the data.
+
+MAIN FACTOR:
+Identify the most important measurable strength or weakness from the supplied facts.
+
+NEXT WEEK PRIORITY:
+Give one practical action based on the strongest evidence in the data.
+
+Rules:
+- Python-calculated statistics are authoritative.
+- Do not invent statistics.
+- Do not invent trends.
+- Do not claim causation unless the supplied data explicitly supports it.
+- Do not calculate a different Wellness Score.
+- Do not make medical diagnoses.
+- If data is limited, explicitly acknowledge that.
+- Keep every section concise.
+- Output only the four requested sections.
+"""
+
+        inputs = _tokenizer(
+            prompt,
+            return_tensors="pt",
+            truncation=True,
+            max_length=512,
+        )
+
+        inputs = {
+            key: value.to(_device)
+            for key, value in inputs.items()
+        }
+
+        with torch.no_grad():
+            output = _model.generate(
+                **inputs,
+                max_new_tokens=160,
+                num_beams=4,
+                early_stopping=True,
+            )
+
+        report = _tokenizer.decode(
+            output[0],
+            skip_special_tokens=True
+        ).strip()
+
+        return report if report else None
+
+    except Exception as error:
+        print("Weekly NLP analysis error:", repr(error))
+        return None

@@ -354,7 +354,7 @@ def generate_nlp_response(task: str, facts: Dict[str, Any]) -> str:
         with torch.no_grad():
             output = _model.generate(
                 **inputs,
-                max_new_tokens=140,
+                max_new_tokens=180,
                 num_beams=4,
                 early_stopping=True,
             )
