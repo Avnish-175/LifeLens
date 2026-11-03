@@ -65,6 +65,7 @@ from ml.nlp.reporter import (
     explain_weekly_facts,
     explain_tomorrow_forecast
 )
+from src.prediction_tracker import log_prediction
 from src.data_manager import check_data_file
 
 @st.dialog("Check-in already exists")
@@ -103,13 +104,98 @@ st.set_page_config(
 )
 import os
 
-def load_css():
+if "lifelens_theme" not in st.session_state:
+    st.session_state["lifelens_theme"] = "dark"
+
+active_theme = st.session_state.get("lifelens_theme", "dark")
+
+
+def load_css(theme="dark"):
     with open("assets/style.css", "r", encoding="utf-8") as f:
-        st.markdown(
-            f"<style>{f.read()}</style>",
-            unsafe_allow_html=True,
-        )
-load_css()
+        css = f.read()
+
+    if theme == "light":
+        theme_override = """
+        :root, .stApp {
+            --ll-bg: #F7F5FC !important;
+            --ll-surface: #FFFFFF !important;
+            --ll-surface-2: #F0ECF8 !important;
+            --ll-surface-glass: rgba(255, 255, 255, 0.90) !important;
+            --ll-border: #E8E1F4 !important;
+            --ll-border-strong: #D5C8EA !important;
+            --ll-text: #29243A !important;
+            --ll-muted: #77718C !important;
+            --ll-faint: #A59FB8 !important;
+            --ll-purple: #7950C8 !important;
+            --ll-violet: #7950C8 !important;
+            --ll-pink: #DB4C9A !important;
+            --ll-good: #168B66 !important;
+            --ll-warn: #B7791F !important;
+            --ll-bad: #D94C68 !important;
+            --ll-info: #2563EB !important;
+            --ll-shadow: 0 12px 35px rgba(121, 80, 200, 0.08) !important;
+            --ll-shadow-sm: 0 4px 14px rgba(121, 80, 200, 0.05) !important;
+            --ll-bg-gradient: radial-gradient(900px 520px at 12% -8%, rgba(121, 80, 200, 0.09), transparent 60%),
+                               radial-gradient(800px 480px at 95% 0%, rgba(219, 76, 154, 0.07), transparent 60%),
+                               #F7F5FC !important;
+            --ll-card-bg: linear-gradient(180deg, #FFFFFF, #FAF8FE) !important;
+            --ll-card-glass: rgba(255, 255, 255, 0.88) !important;
+            --ll-nav-bg: rgba(247, 245, 252, 0.85) !important;
+            --ll-menu-bg: #FFFFFF !important;
+            --ll-score-grad: linear-gradient(180deg, #29243A 0%, #7950C8 100%) !important;
+            --ll-ring-inner: radial-gradient(circle at 50% 30%, #FFFFFF 0%, #F0ECF8 70%) !important;
+            --ll-ring-track: rgba(0, 0, 0, 0.06) !important;
+            --ll-tile-text: #3B3550 !important;
+            --ll-input-bg: #FFFFFF !important;
+            --ll-input-color: #29243A !important;
+            --ll-slider-track: #E2D9F3 !important;
+        }
+        """
+    else:
+        theme_override = """
+        :root, .stApp {
+            --ll-bg: #0D0B19 !important;
+            --ll-surface: #19162A !important;
+            --ll-surface-2: #211D3B !important;
+            --ll-surface-glass: rgba(25, 22, 42, 0.78) !important;
+            --ll-border: #302A45 !important;
+            --ll-border-strong: #423A5E !important;
+            --ll-text: #F5F2FF !important;
+            --ll-muted: #AAA5C9 !important;
+            --ll-faint: #726D92 !important;
+            --ll-purple: #8B5CF6 !important;
+            --ll-violet: #A78BFA !important;
+            --ll-pink: #F472B6 !important;
+            --ll-good: #34D399 !important;
+            --ll-warn: #FBBF24 !important;
+            --ll-bad: #FB7185 !important;
+            --ll-info: #60A5FA !important;
+            --ll-shadow: 0 16px 40px rgba(0, 0, 0, 0.40) !important;
+            --ll-shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+            --ll-bg-gradient: radial-gradient(900px 520px at 12% -8%, rgba(139, 92, 246, 0.22), transparent 60%),
+                               radial-gradient(800px 480px at 95% 0%, rgba(244, 114, 182, 0.14), transparent 60%),
+                               #0D0B19 !important;
+            --ll-card-bg: linear-gradient(180deg, rgba(33, 29, 59, 0.75), rgba(25, 22, 42, 0.88)) !important;
+            --ll-card-glass: rgba(25, 22, 42, 0.70) !important;
+            --ll-nav-bg: rgba(13, 11, 25, 0.82) !important;
+            --ll-menu-bg: #19162A !important;
+            --ll-score-grad: linear-gradient(180deg, #FFFFFF 0%, #CFC6FF 100%) !important;
+            --ll-ring-inner: radial-gradient(circle at 50% 30%, #211D3B 0%, #110F20 70%) !important;
+            --ll-ring-track: rgba(255, 255, 255, 0.08) !important;
+            --ll-tile-text: #E0DDF5 !important;
+            --ll-input-bg: rgba(255, 255, 255, 0.05) !important;
+            --ll-input-color: #F5F2FF !important;
+            --ll-slider-track: rgba(255, 255, 255, 0.12) !important;
+        }
+        """
+
+    st.markdown(
+        f"<style>{css}\n{theme_override}</style>",
+        unsafe_allow_html=True,
+    )
+
+
+load_css(active_theme)
 
 # ==========================================================
 # LIFELENS UI HELPERS  (presentation only — no calculations)
@@ -139,20 +225,50 @@ def ll_section(icon, title, subtitle=""):
     )
 
 
-def ll_style_fig(fig, accent=None, height=None):
-    """Re-skin an EXISTING Plotly figure for the dark theme (colours only)."""
-    fig.update_layout(
-        template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="Inter, system-ui, sans-serif", color="#B9B5DC"),
-        title_font=dict(color="#F4F2FF", size=15),
-        hoverlabel=dict(bgcolor="#17163A", font_color="#F4F2FF"),
-    )
-    fig.update_xaxes(gridcolor="rgba(255,255,255,0.06)", linecolor="rgba(255,255,255,0.10)",
-                     zerolinecolor="rgba(255,255,255,0.10)")
-    fig.update_yaxes(gridcolor="rgba(255,255,255,0.06)", linecolor="rgba(255,255,255,0.10)",
-                     zerolinecolor="rgba(255,255,255,0.10)")
+def ll_style_fig(fig, accent=None, height=None, theme=None):
+    """Re-skin an EXISTING Plotly figure dynamically for light or dark theme."""
+    if theme is None:
+        theme = st.session_state.get("lifelens_theme", "dark")
+
+    if theme == "light":
+        fig.update_layout(
+            template="plotly_white",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(family="Inter, system-ui, sans-serif", color="#29243A"),
+            title_font=dict(color="#29243A", size=15),
+            hoverlabel=dict(bgcolor="#FFFFFF", font_color="#29243A", bordercolor="#E8E1F4"),
+        )
+        fig.update_xaxes(
+            gridcolor="rgba(0,0,0,0.06)",
+            linecolor="rgba(0,0,0,0.12)",
+            zerolinecolor="rgba(0,0,0,0.12)"
+        )
+        fig.update_yaxes(
+            gridcolor="rgba(0,0,0,0.06)",
+            linecolor="rgba(0,0,0,0.12)",
+            zerolinecolor="rgba(0,0,0,0.12)"
+        )
+    else:
+        fig.update_layout(
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(family="Inter, system-ui, sans-serif", color="#AAA5C9"),
+            title_font=dict(color="#F5F2FF", size=15),
+            hoverlabel=dict(bgcolor="#19162A", font_color="#F5F2FF", bordercolor="#302A45"),
+        )
+        fig.update_xaxes(
+            gridcolor="rgba(255,255,255,0.06)",
+            linecolor="rgba(255,255,255,0.10)",
+            zerolinecolor="rgba(255,255,255,0.10)"
+        )
+        fig.update_yaxes(
+            gridcolor="rgba(255,255,255,0.06)",
+            linecolor="rgba(255,255,255,0.10)",
+            zerolinecolor="rgba(255,255,255,0.10)"
+        )
+
     if accent:
         fig.update_traces(line_color=accent, marker_color=accent)
     if height:
@@ -160,19 +276,54 @@ def ll_style_fig(fig, accent=None, height=None):
     return fig
 
 
-def ll_style_radar(fig):
-    ll_style_fig(fig)
-    fig.update_layout(
-        polar=dict(
-            bgcolor="rgba(0,0,0,0)",
-            radialaxis=dict(gridcolor="rgba(255,255,255,0.10)", linecolor="rgba(255,255,255,0.10)",
-                            tickfont=dict(color="#8F8BB8")),
-            angularaxis=dict(gridcolor="rgba(255,255,255,0.10)", linecolor="rgba(255,255,255,0.10)",
-                             tickfont=dict(color="#F4F2FF")),
+def ll_style_radar(fig, theme=None):
+    if theme is None:
+        theme = st.session_state.get("lifelens_theme", "dark")
+    ll_style_fig(fig, theme=theme)
+    if theme == "light":
+        fig.update_layout(
+            polar=dict(
+                bgcolor="rgba(0,0,0,0)",
+                radialaxis=dict(
+                    gridcolor="rgba(0,0,0,0.08)",
+                    linecolor="rgba(0,0,0,0.12)",
+                    tickfont=dict(color="#77718C")
+                ),
+                angularaxis=dict(
+                    gridcolor="rgba(0,0,0,0.08)",
+                    linecolor="rgba(0,0,0,0.12)",
+                    tickfont=dict(color="#29243A")
+                ),
+            )
         )
-    )
-    fig.update_traces(line_color="#A78BFA", fillcolor="rgba(139, 92, 246, 0.28)",
-                      marker_color="#F472B6", selector=dict(type="scatterpolar"))
+        fig.update_traces(
+            line_color="#7950C8",
+            fillcolor="rgba(121, 80, 200, 0.20)",
+            marker_color="#DB4C9A",
+            selector=dict(type="scatterpolar")
+        )
+    else:
+        fig.update_layout(
+            polar=dict(
+                bgcolor="rgba(0,0,0,0)",
+                radialaxis=dict(
+                    gridcolor="rgba(255,255,255,0.10)",
+                    linecolor="rgba(255,255,255,0.10)",
+                    tickfont=dict(color="#8F8BB8")
+                ),
+                angularaxis=dict(
+                    gridcolor="rgba(255,255,255,0.10)",
+                    linecolor="rgba(255,255,255,0.10)",
+                    tickfont=dict(color="#F4F2FF")
+                ),
+            )
+        )
+        fig.update_traces(
+            line_color="#A78BFA",
+            fillcolor="rgba(139, 92, 246, 0.28)",
+            marker_color="#F472B6",
+            selector=dict(type="scatterpolar")
+        )
     return fig
 
 
@@ -430,6 +581,11 @@ if today_recorded and today_row is not None:
 
     if prediction:
         try:
+            tomorrow_str = (today + timedelta(days=1)).strftime("%Y-%m-%d")
+            log_prediction(prediction, today_str, tomorrow_str)
+        except Exception as pred_err:
+            print("Forecast logging error:", repr(pred_err))
+        try:
             forecast_explanation = explain_tomorrow_forecast(
                 prediction,
                 latest=today_row,
@@ -446,200 +602,247 @@ if selected_tab == "📝 Daily Check-in":
     st.html(
         """
         <div class="ll-page-head">
-            <span class="ll-eyebrow">⏱ Daily Check-in · ~1 min</span>
+            <span class="ll-eyebrow">⏱ Daily Wellness Journal · Guided Check-in</span>
             <h1>Daily Check-in</h1>
             <p>Take a minute to reflect and keep your wellness picture up to date.</p>
         </div>
         """
     )
 
+    # Display celebration card if a check-in was just submitted
     if st.session_state.get("checkin_success_message"):
-        st.success(st.session_state.pop("checkin_success_message"))
+        sc = st.session_state.pop("last_submitted_score", None)
+        cat = st.session_state.pop("last_submitted_category", None)
+        d_str = st.session_state.pop("last_submitted_date", None)
+        msg = st.session_state.pop("checkin_success_message")
 
-    with st.form("daily_checkin"):
+        st.success(f"✓ {msg}")
+        if sc is not None:
+            cat_cls = _CATEGORY_CLASS.get(cat, "ll-cat-healthy")
+            st.html(
+                f"""
+                <div class="ll-card {cat_cls}" style="margin-bottom: 1.5rem; text-align: center; padding: 22px 24px;">
+                    <span class="ll-chip" style="margin-bottom: 8px;">🎉 Check-in Recorded for {d_str}</span>
+                    <div style="font-size: 2.8rem; font-weight: 800; letter-spacing: -0.03em; color: var(--ll-text); line-height: 1.1;">
+                        {sc:.0f}<small style="font-size: 1.1rem; color: var(--ll-faint);">/100</small>
+                    </div>
+                    <div style="font-size: 1.05rem; font-weight: 700; color: var(--ll-cat); margin-top: 6px;">
+                        {cat} Wellness Status
+                    </div>
+                </div>
+                """
+            )
+            col_dash, _ = st.columns([1.5, 3])
+            with col_dash:
+                if st.button("👉 View in Dashboard", type="primary", use_container_width=True, key="btn_goto_dash"):
+                    st.session_state["lifelens_page_selector"] = "🏠 Dashboard"
+                    st.rerun()
 
-        # Date picker: allows today or past dates, restricts future dates
+    # Load existing records to detect whether selected date already exists
+    existing_data = load_data()
+    if not existing_data.empty and "Date" in existing_data.columns:
+        existing_data["Date"] = normalize_date_series(existing_data["Date"])
+    else:
+        existing_data = pd.DataFrame()
+
+    # Date selector (outside form for instant reactivity and pre-population)
+    sel_col1, sel_col2 = st.columns([1.5, 2.5], gap="medium", vertical_alignment="center")
+    with sel_col1:
         date = st.date_input(
             "📅 Check-in Date",
             value=today_date,
             max_value=today_date,
-            help="Select today or a past date to record or update your check-in."
+            help="Select today or a past date to record or update your wellness entry.",
+            key="checkin_date_picker"
         )
 
-        # CARD 1 — 🌱 DAILY HABITS (Compact 2x2 slider grid)
-        with st.container(border=True, key="daily_habits_panel"):
+    date_string = pd.to_datetime(date).strftime("%Y-%m-%d")
+    is_today_date = (date_string == today_str)
+
+    matched_entry = pd.DataFrame()
+    if not existing_data.empty:
+        matched_entry = existing_data[existing_data["Date"] == date_string]
+
+    already_exists = not matched_entry.empty
+    prev_row = matched_entry.iloc[-1] if already_exists else None
+
+    with sel_col2:
+        if already_exists:
             st.html(
+                f"""
+                <div style="background: rgba(251, 191, 36, 0.09); border: 1px solid rgba(251, 191, 36, 0.35); border-radius: 12px; padding: 10px 16px;">
+                    <span style="color: var(--ll-warn); font-weight: 700; font-size: 0.88rem;">✏️ Existing Record Detected ({date_string})</span><br>
+                    <span style="color: var(--ll-muted); font-size: 0.82rem;">A check-in already exists. Submitting will update your existing entry with new values.</span>
+                </div>
                 """
-                <div class="ll-panel-head">
-                    <h3>🌱 Daily Habits</h3>
-                    <span>Track the behaviours that shaped your day.</span>
+            )
+        else:
+            st.html(
+                f"""
+                <div style="background: rgba(52, 211, 153, 0.09); border: 1px solid rgba(52, 211, 153, 0.35); border-radius: 12px; padding: 10px 16px;">
+                    <span style="color: var(--ll-good); font-weight: 700; font-size: 0.88rem;">🌱 New Record Entry ({date_string})</span><br>
+                    <span style="color: var(--ll-muted); font-size: 0.82rem;">No entry recorded yet for this date. Complete the journal below.</span>
                 </div>
                 """
             )
 
-            h_row1_col1, h_row1_col2 = st.columns(2, gap="medium")
-            with h_row1_col1:
+    # Pre-populate defaults from existing record if available
+    def_sleep = float(prev_row["SleepHours"]) if (prev_row is not None and pd.notna(prev_row.get("SleepHours"))) else 7.5
+    def_screen = float(prev_row["ScreenTime"]) if (prev_row is not None and pd.notna(prev_row.get("ScreenTime"))) else 4.0
+    def_exercise = int(prev_row["ExerciseMinutes"]) if (prev_row is not None and pd.notna(prev_row.get("ExerciseMinutes"))) else 30
+    def_study = float(prev_row["StudyHours"]) if (prev_row is not None and pd.notna(prev_row.get("StudyHours"))) else 4.0
+    def_mood = int(prev_row["Mood"]) if (prev_row is not None and pd.notna(prev_row.get("Mood"))) else 7
+    def_energy = int(prev_row["Energy"]) if (prev_row is not None and pd.notna(prev_row.get("Energy"))) else 7
+    def_stress = int(prev_row["Stress"]) if (prev_row is not None and pd.notna(prev_row.get("Stress"))) else 3
+    def_prod = int(prev_row["Productivity"]) if (prev_row is not None and pd.notna(prev_row.get("Productivity"))) else 7
+    def_note = str(prev_row["DailyNote"]) if (prev_row is not None and pd.notna(prev_row.get("DailyNote"))) else ""
+
+    # Completion progress indicator
+    st.html(
+        """
+        <div style="display: flex; align-items: center; justify-content: space-between; margin: 18px 0 10px;">
+            <span style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ll-violet);">
+                Journal Completion Meter
+            </span>
+            <span style="font-size: 0.8rem; font-weight: 700; color: var(--ll-good);">
+                8 of 8 Core Dimensions Ready (100%)
+            </span>
+        </div>
+        <div style="height: 6px; width: 100%; background: var(--ll-slider-track); border-radius: 999px; overflow: hidden; margin-bottom: 22px;">
+            <div style="height: 100%; width: 100%; background: linear-gradient(90deg, var(--ll-purple), var(--ll-pink)); border-radius: 999px;"></div>
+        </div>
+        """
+    )
+
+    with st.form("daily_checkin_journal"):
+        # Section 1: Sleep & Recovery & Digital Habits
+        with st.container(border=True, key="panel_sleep_digital"):
+            st.html(
+                """
+                <div class="ll-panel-head">
+                    <h3>😴 Sleep, Recovery & Digital Habits</h3>
+                    <span>Capture the restorative balance and screen exposure that framed your day.</span>
+                </div>
+                """
+            )
+            col_s, col_d = st.columns(2, gap="medium")
+            with col_s:
                 sleep_hours = st.slider(
-                    "😴 Hours of sleep",
+                    "Hours of Sleep (hrs)",
                     min_value=0.0,
                     max_value=14.0,
-                    value=7.0,
+                    value=def_sleep,
                     step=0.5,
                     format="%.1f hrs",
-                    help="How long did you sleep in total?"
+                    help="Total time slept overnight and including naps. Optimal range: 7.0 – 9.0 hrs."
                 )
-            with h_row1_col2:
+            with col_d:
                 screen_time = st.slider(
-                    "💻 Screen time",
+                    "Screen Time (hrs)",
                     min_value=0.0,
                     max_value=24.0,
-                    value=4.0,
+                    value=def_screen,
                     step=0.5,
                     format="%.1f hrs",
-                    help="Total recreational or non-work screen time"
+                    help="Recreational, mobile, and non-essential display time. Target under 4.0 hrs."
                 )
 
-            h_row2_col1, h_row2_col2 = st.columns(2, gap="medium")
-            with h_row2_col1:
-                exercise_minutes = st.slider(
-                    "🏃 Exercise",
-                    min_value=0,
-                    max_value=1440,
-                    value=30,
-                    step=5,
-                    format="%d min",
-                    help="Total active movement or workout time"
-                )
-            with h_row2_col2:
-                study_hours = st.slider(
-                    "📚 Study / work",
-                    min_value=0.0,
-                    max_value=24.0,
-                    value=4.0,
-                    step=0.5,
-                    format="%.1f hrs",
-                    help="Time spent studying or focused work"
-                )
-
-        # CARD 2 — 💭 PERSONAL REFLECTIONS (Compact 2x2 dropdown grid)
-        with st.container(border=True, key="personal_reflections_panel"):
+        # Section 2: Physical Activity & Learning & Work
+        with st.container(border=True, key="panel_activity_work"):
             st.html(
                 """
                 <div class="ll-panel-head">
-                    <h3>💭 Personal Reflections</h3>
-                    <span>How did you feel today? (Optional descriptions)</span>
+                    <h3>🏃 Physical Activity & Intellectual Engagement</h3>
+                    <span>Active movement sessions and focused professional/study hours.</span>
                 </div>
                 """
             )
-
-            r_row1_col1, r_row1_col2 = st.columns(2, gap="medium")
-            with r_row1_col1:
-                mood_choice = st.selectbox(
-                    "😊 Mood",
-                    options=[
-                        "Prefer not to answer",
-                        "Very low",
-                        "A little low",
-                        "Mixed or okay",
-                        "Mostly positive",
-                        "Very positive"
-                    ],
-                    index=0
+            col_a, col_w = st.columns(2, gap="medium")
+            with col_a:
+                exercise_minutes = st.slider(
+                    "Physical Movement / Exercise (min)",
+                    min_value=0,
+                    max_value=1440,
+                    value=def_exercise,
+                    step=5,
+                    format="%d min",
+                    help="Intentional walking, gym workouts, yoga, cycling, or active sports."
                 )
-            with r_row1_col2:
-                energy_choice = st.selectbox(
-                    "⚡ Energy",
-                    options=[
-                        "Prefer not to answer",
-                        "Very low",
-                        "Low",
-                        "Moderate",
-                        "High",
-                        "Very high"
-                    ],
-                    index=0
+            with col_w:
+                study_hours = st.slider(
+                    "Learning & Deep Work (hrs)",
+                    min_value=0.0,
+                    max_value=24.0,
+                    value=def_study,
+                    step=0.5,
+                    format="%.1f hrs",
+                    help="Dedicated time spent studying, writing, programming, or focused occupational output."
                 )
 
-            r_row2_col1, r_row2_col2 = st.columns(2, gap="medium")
-            with r_row2_col1:
-                stress_choice = st.selectbox(
-                    "😌 Stress",
-                    options=[
-                        "Prefer not to answer",
-                        "Very low",
-                        "Mild",
-                        "Moderate",
-                        "High",
-                        "Very high"
-                    ],
-                    index=0
+        # Section 3: Emotional Wellbeing & Productivity
+        with st.container(border=True, key="panel_emotional_prod"):
+            st.html(
+                """
+                <div class="ll-panel-head">
+                    <h3>😊 Emotional Wellbeing & Energy</h3>
+                    <span>Reflect on your mood, cognitive pressure, and stamina levels (1 to 10 scale).</span>
+                </div>
+                """
+            )
+            em_col1, em_col2 = st.columns(2, gap="medium")
+            with em_col1:
+                mood = st.slider(
+                    "😊 Subjective Mood (1 = Very Low / Depleted, 5 = Neutral, 10 = Peak / Joyful)",
+                    min_value=1,
+                    max_value=10,
+                    value=def_mood,
+                    step=1,
+                    help="How was your overarching emotional state today?"
                 )
-            with r_row2_col2:
-                productivity_choice = st.selectbox(
-                    "🎯 Productivity",
-                    options=[
-                        "Prefer not to answer",
-                        "Very little progress",
-                        "A little progress",
-                        "Reasonable progress",
-                        "Good progress",
-                        "Excellent progress"
-                    ],
-                    index=0
+                stress = st.slider(
+                    "🧘 Stress Level (1 = Completely Calm, 5 = Manageable, 10 = Overwhelmed)",
+                    min_value=1,
+                    max_value=10,
+                    value=def_stress,
+                    step=1,
+                    help="Level of mental tension, anxiety, or cognitive pressure experienced today."
+                )
+            with em_col2:
+                energy = st.slider(
+                    "⚡ Vital Energy (1 = Exhausted, 5 = Moderate, 10 = High Stamina)",
+                    min_value=1,
+                    max_value=10,
+                    value=def_energy,
+                    step=1,
+                    help="Physical and mental vigor throughout the waking hours."
+                )
+                productivity = st.slider(
+                    "🎯 Productivity Output (1 = Minimal Progress, 5 = Steady, 10 = Exceptional)",
+                    min_value=1,
+                    max_value=10,
+                    value=def_prod,
+                    step=1,
+                    help="How effective and accomplished did you feel with your intended goals?"
                 )
 
-        # CARD 3 — OPTIONAL REFLECTION
-           
+
+
+        submit_btn_label = f"🔄 Update Today's Check-in ({date_string})" if (already_exists and is_today_date) else (
+            f"🔄 Update Check-in for {date_string}" if already_exists else (
+                f"✓ Complete Today's Check-in ({date_string})" if is_today_date else f"✓ Complete Check-in for {date_string}"
+            )
+        )
+
         submitted = st.form_submit_button(
-            "✓ Save Check-in",
+            submit_btn_label,
             use_container_width=True,
             type="primary"
         )
 
-
         if submitted:
             if date > today_date:
-                st.error("Future dates cannot be selected.")
+                st.error("Future dates cannot be recorded.")
                 st.stop()
-
-            # Convert descriptive choices to the existing numeric scale.
-            # Missing answers remain None rather than being treated as zero.
-            mood_map = {
-                "Very low": 2,
-                "A little low": 4,
-                "Mixed or okay": 6,
-                "Mostly positive": 8,
-                "Very positive": 10
-            }
-
-            energy_map = {
-                "Very low": 2,
-                "Low": 4,
-                "Moderate": 6,
-                "High": 8,
-                "Very high": 10
-            }
-
-            stress_map = {
-                "Very low": 1,
-                "Mild": 3,
-                "Moderate": 5,
-                "High": 8,
-                "Very high": 10
-            }
-
-            productivity_map = {
-                "Very little progress": 2,
-                "A little progress": 4,
-                "Reasonable progress": 6,
-                "Good progress": 8,
-                "Excellent progress": 10
-            }
-
-            mood = mood_map.get(mood_choice)
-            energy = energy_map.get(energy_choice)
-            stress = stress_map.get(stress_choice)
-            productivity = productivity_map.get(productivity_choice)
 
             new_entry = pd.DataFrame([{
                 "Date": date,
@@ -651,35 +854,24 @@ if selected_tab == "📝 Daily Check-in":
                 "Energy": energy,
                 "Stress": stress,
                 "Productivity": productivity,
-                "DailyNote": daily_note.strip() or None
+                "DailyNote": daily_note.strip() if daily_note and daily_note.strip() else None
             }])
 
-            existing_data = load_data()
+            try:
+                save_data(new_entry)
+                cal_score, cal_cat = calculate_wellness_score(
+                    sleep_hours, mood, stress, energy, exercise_minutes, screen_time, productivity
+                )
+                st.session_state["last_submitted_score"] = cal_score
+                st.session_state["last_submitted_category"] = cal_cat
+                st.session_state["last_submitted_date"] = date_string
+                action_word = "updated" if already_exists else "recorded"
+                st.session_state["checkin_success_message"] = f"Your check-in for {date_string} has been successfully {action_word}."
+                st.rerun()
+            except Exception as e:
+                st.error(f"Unable to save check-in: {e}")
 
-            date_string = pd.to_datetime(date).strftime("%Y-%m-%d")
-
-            if not existing_data.empty:
-                existing_dates = normalize_date_series(existing_data["Date"])
-            else:
-                existing_dates = pd.Series(dtype="object")
-
-            if date_string in existing_dates.values:
-                st.session_state["pending_overwrite"] = new_entry
-                confirm_overwrite(new_entry, date_string)
-            else:
-                try:
-                    save_data(new_entry)
-
-                    data = load_data()
-
-                    st.success(f"Your check-in for {date_string} has been saved.")
-                    st.subheader(f"Entry for {date_string}")
-                    st.dataframe(new_entry, use_container_width=True)
-                except Exception as e:
-                    st.error(f"Unable to save check-in: {e}")
-
-    
-    with st.expander("View Raw Data"):
+    with st.expander("🔍 View Raw Historical Check-in Data"):
         st.dataframe(data, use_container_width=True, hide_index=False)
 
 if selected_tab == "🏠 Dashboard":
@@ -1230,6 +1422,9 @@ if selected_tab == "🏠 Dashboard":
 
 if selected_tab == "📊 Reports":
     show_reports(monthly_report)
+else:
+    st.session_state.pop("show_weekly_pdf_download", None)
+    st.session_state.pop("show_monthly_pdf_download", None)
 
 if selected_tab == "ℹ️ About":
     show_about()

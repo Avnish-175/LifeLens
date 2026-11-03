@@ -1,15 +1,30 @@
+import streamlit as st
 import pandas as pd
 import plotly.express as px
-import streamlit as st
+from datetime import datetime, timedelta
 
-from src.data_manager import load_data
+from src.data_manager import load_data, normalize_date_series
+from src.wellness_score import calculate_wellness_score, _valid_number
 from src.weekly_report import generate_weekly_report
+from src.monthly_report import generate_monthly_report
+from src.nlp_facts import build_weekly_facts
+from ml.nlp.reporter import explain_weekly_facts
+from src.pdf_generator import generate_wellness_pdf
+from src.prediction_tracker import get_actual_vs_predicted_data
+
+
+def _fmt_delta(diff, unit=""):
+    sign = "+" if diff > 0 else ""
+    if unit in ("min", "%"):
+        return f"{sign}{diff:.0f} {unit}".strip()
+    elif unit == "hrs":
+        return f"{sign}{diff:.1f} hrs"
+    return f"{sign}{diff:.1f}{unit}".strip()
 
 
 def _create_compact_trend_chart(df, y_col, title, unit, color):
     """
-    Helper to generate a clean, compact line/scatter trend chart for Reports.
-    Gracefully handles 1 data point or multiple data points.
+    Helper to generate a clean, compact dual-theme line/scatter trend chart for Reports.
     """
     valid_df = df.dropna(subset=["Date", y_col]).sort_values("Date")
     if valid_df.empty:
@@ -26,7 +41,7 @@ def _create_compact_trend_chart(df, y_col, title, unit, color):
     hover_fmt = (
         "<b>%{x|%d %b %Y}</b><br>"
         f"{title}: %{{y:.1f}} {unit}<extra></extra>"
-        if unit != "/10" and unit != "min"
+        if unit not in ("/10", "min")
         else f"<b>%{{x|%d %b %Y}}</b><br>{title}: %{{y}}{unit}<extra></extra>"
     )
 
@@ -36,717 +51,521 @@ def _create_compact_trend_chart(df, y_col, title, unit, color):
         hovertemplate=hover_fmt
     )
 
+    theme = st.session_state.get("lifelens_theme", "dark")
+    if theme == "light":
+        plot_bg = "rgba(0,0,0,0)"
+        paper_bg = "rgba(0,0,0,0)"
+        font_color = "#29243A"
+        title_color = "#29243A"
+        grid_color = "rgba(0,0,0,0.06)"
+        line_color = "rgba(0,0,0,0.12)"
+    else:
+        plot_bg = "rgba(0,0,0,0)"
+        paper_bg = "rgba(0,0,0,0)"
+        font_color = "#AAA5C9"
+        title_color = "#F5F2FF"
+        grid_color = "rgba(255,255,255,0.06)"
+        line_color = "rgba(255,255,255,0.10)"
+
     fig.update_layout(
-        height=220,
+        height=210,
         margin=dict(l=15, r=15, t=32, b=15),
         title=dict(
             text=f"<b>{title}</b>",
-            font=dict(size=13, color="#1E3A8A"),
+            font=dict(size=13, color=title_color),
             x=0.01,
             y=0.96
         ),
         xaxis_title="",
         yaxis_title=unit if unit else "",
-        plot_bgcolor="#FFFFFF",
-        paper_bgcolor="#FFFFFF",
-        font=dict(family="system-ui, sans-serif", size=11, color="#475569"),
+        plot_bgcolor=plot_bg,
+        paper_bgcolor=paper_bg,
+        font=dict(family="Inter, system-ui, sans-serif", size=11, color=font_color),
         hovermode="x unified"
     )
 
     fig.update_xaxes(
         showgrid=True,
-        gridcolor="#F1F5F9",
+        gridcolor=grid_color,
         tickformat="%d %b" if len(valid_df) > 1 else "%d %b %Y",
-        linecolor="#E2E8F0"
+        linecolor=line_color
     )
     fig.update_yaxes(
         showgrid=True,
-        gridcolor="#F1F5F9",
-        linecolor="#E2E8F0",
+        gridcolor=grid_color,
+        linecolor=line_color,
         zeroline=False
     )
-
     return fig
 
 
-def _generate_historical_insights(filtered_data, period_label):
+def _compute_period_stats(df, total_days_in_period=7):
     """
-    Analyzes earliest vs latest actual recorded values in filtered_data
-    and produces 3 deterministic insight cards: Improved, Needs Attention, Biggest Pattern.
+    Computes scores, consistency, best/worst days, averages strictly from actual records.
     """
-    if filtered_data is None or filtered_data.empty or "Date" not in filtered_data.columns:
+    if df is None or df.empty:
         return None
 
-    metrics_meta = {
-        "SleepHours": ("Sleep Hours", "hrs", True, 8.0, "duration"),
-        "Mood": ("Mood Rating", "/10", True, 10.0, "rating"),
-        "Energy": ("Energy Level", "/10", True, 10.0, "level"),
-        "Productivity": ("Productivity", "/10", True, 10.0, "output"),
-        "ExerciseMinutes": ("Exercise Duration", "min", True, 60.0, "time"),
-        "ScreenTime": ("Screen Time", "hrs", False, 8.0, "usage"),
-        "Stress": ("Stress Level", "/10", False, 10.0, "level"),
-    }
+    sorted_df = df.copy()
+    sorted_df["Date"] = pd.to_datetime(sorted_df["Date"])
+    sorted_df = sorted_df.sort_values("Date").dropna(subset=["Date"])
+    days_recorded = len(sorted_df)
 
-    changes = []
-    sorted_df = filtered_data.dropna(subset=["Date"]).sort_values("Date")
-    if len(sorted_df) < 2:
-        return None
-
-    for col, (name, unit, higher_is_better, typical_range, noun) in metrics_meta.items():
-        if col in sorted_df.columns:
-            valid_series = sorted_df.dropna(subset=[col])
-            if len(valid_series) >= 2:
-                earliest_val = float(valid_series.iloc[0][col])
-                latest_val = float(valid_series.iloc[-1][col])
-                diff = latest_val - earliest_val
-
-                # Normalized change for comparison across different scales
-                norm_diff = diff / typical_range
-                goodness = norm_diff if higher_is_better else -norm_diff
-
-                # Relative change magnitude
-                base = abs(earliest_val)
-                pct_change = (abs(diff) / (base + 0.5)) * 100
-
-                changes.append({
-                    "col": col,
-                    "name": name,
-                    "unit": unit,
-                    "noun": noun,
-                    "higher_is_better": higher_is_better,
-                    "earliest": earliest_val,
-                    "latest": latest_val,
-                    "diff": diff,
-                    "goodness": goodness,
-                    "abs_diff": abs(diff),
-                    "pct_change": pct_change,
-                })
-
-    if not changes:
-        return None
-
-    # Helper formatters
-    def fmt_val(val, unit):
-        if unit == "min":
-            return f"{val:.0f} {unit}"
-        elif unit == "hrs":
-            return f"{val:.1f} {unit}"
-        return f"{val:.1f}{unit}"
-
-    def fmt_delta(diff, unit):
-        sign = "+" if diff > 0 else ""
-        if unit == "min":
-            return f"{sign}{diff:.0f} {unit}"
-        elif unit == "hrs":
-            return f"{sign}{diff:.1f} {unit}"
-        return f"{sign}{diff:.1f}{unit}"
-
-    # 1. Strongest Positive Change
-    positive_changes = [c for c in changes if c["goodness"] > 0]
-    improved_item = None
-    if positive_changes:
-        best_pos = max(positive_changes, key=lambda x: x["goodness"])
-        diff_str = fmt_delta(best_pos["diff"], best_pos["unit"])
-        from_to = f"{fmt_val(best_pos['earliest'], best_pos['unit'])} → {fmt_val(best_pos['latest'], best_pos['unit'])}"
-
-        if best_pos["col"] == "ScreenTime":
-            explanation = f"Screen time decreased by {fmt_delta(abs(best_pos['diff']), best_pos['unit'])}, reducing fatigue."
-        elif best_pos["col"] == "Stress":
-            explanation = f"Stress level dropped by {fmt_delta(abs(best_pos['diff']), best_pos['unit'])}, reflecting calmer days."
-        else:
-            explanation = f"Your {best_pos['name'].lower()} increased by {diff_str}, showing positive momentum."
-
-        improved_arrow = "↑" if best_pos["diff"] > 0 else "↓"
-        improved_item = {
-            "title": "⬆️ Improved",
-            "metric_title": f"{best_pos['name']} {improved_arrow}",
-            "from_to": from_to,
-            "delta": diff_str,
-            "delta_color": "#059669",
-            "bg_tint": "rgba(5, 150, 105, 0.05)",
-            "border_color": "#A7F3D0",
-            "explanation": explanation
-        }
-    else:
-        improved_item = {
-            "title": "⬆️ Improved",
-            "metric_title": "Steady Metrics",
-            "from_to": "Stable baseline",
-            "delta": "0.0",
-            "delta_color": "#64748B",
-            "bg_tint": "#F8FAFC",
-            "border_color": "#E2E8F0",
-            "explanation": "No metrics recorded an upward trend over this specific period."
-        }
-
-    # 2. Strongest Negative Change
-    negative_changes = [c for c in changes if c["goodness"] < 0]
-    needs_attention_item = None
-    if negative_changes:
-        worst_neg = min(negative_changes, key=lambda x: x["goodness"])
-        diff_str = fmt_delta(worst_neg["diff"], worst_neg["unit"])
-        from_to = f"{fmt_val(worst_neg['earliest'], worst_neg['unit'])} → {fmt_val(worst_neg['latest'], worst_neg['unit'])}"
-
-        if worst_neg["col"] == "ScreenTime":
-            explanation = f"Screen time rose by {diff_str}, which may compete with rest."
-        elif worst_neg["col"] == "Stress":
-            explanation = f"Stress level increased by {diff_str}; consider prioritizing relaxation."
-        else:
-            explanation = f"Your {worst_neg['name'].lower()} declined by {diff_str}; focus on restoration."
-
-        needs_attention_arrow = "↑" if worst_neg["diff"] > 0 else "↓"
-        needs_attention_item = {
-            "title": "⬇️ Needs Attention",
-            "metric_title": f"{worst_neg['name']} {needs_attention_arrow}",
-            "from_to": from_to,
-            "delta": diff_str,
-            "delta_color": "#DC2626",
-            "bg_tint": "rgba(220, 38, 38, 0.04)",
-            "border_color": "#FECACA",
-            "explanation": explanation
-        }
-    else:
-        needs_attention_item = {
-            "title": "✓ Stable",
-            "metric_title": "All Resilient",
-            "from_to": "Healthy levels",
-            "delta": "✓ None",
-            "delta_color": "#059669",
-            "bg_tint": "rgba(5, 150, 105, 0.05)",
-            "border_color": "#A7F3D0",
-            "explanation": "No tracked metrics experienced a meaningful decline during this period."
-        }
-
-    # 3. Biggest Pattern (Largest relative shift)
-    meaningful_changes = [c for c in changes if c["abs_diff"] > 1e-4]
-    pattern_item = None
-    if meaningful_changes:
-        largest_pattern = max(meaningful_changes, key=lambda x: x["pct_change"])
-        diff_str = fmt_delta(largest_pattern["diff"], largest_pattern["unit"])
-        from_to = f"{fmt_val(largest_pattern['earliest'], largest_pattern['unit'])} → {fmt_val(largest_pattern['latest'], largest_pattern['unit'])}"
-        dir_symbol = "↑" if largest_pattern["diff"] > 0 else "↓"
-
-        pattern_item = {
-            "title": "🎯 Biggest Pattern",
-            "metric_title": f"{largest_pattern['name']} {dir_symbol}",
-            "from_to": from_to,
-            "delta": f"{diff_str} ({largest_pattern['pct_change']:.0f}%)",
-            "delta_color": "#2563EB",
-            "bg_tint": "rgba(37, 99, 235, 0.04)",
-            "border_color": "#BFDBFE",
-            "explanation": f"Showed the most substantial relative fluctuation ({largest_pattern['pct_change']:.0f}% shift) in this timeframe."
-        }
-    else:
-        pattern_item = {
-            "title": "🎯 Biggest Pattern",
-            "metric_title": "Consistent Routine",
-            "from_to": "Steady values",
-            "delta": "±0.0",
-            "delta_color": "#2563EB",
-            "bg_tint": "rgba(37, 99, 235, 0.04)",
-            "border_color": "#BFDBFE",
-            "explanation": "Your daily habits remained very stable with no wide fluctuations."
-        }
-
-    return [improved_item, needs_attention_item, pattern_item]
-
-
-def _compute_period_comparison(data, period_label, today):
-    """
-    Computes average metric values for current period vs immediately preceding period.
-    Returns (status_type, results_or_message)
-    status_type: 'unavailable_all_time' | 'no_previous_data' | 'success'
-    """
-    if period_label == "All time":
-        return "unavailable_all_time", "Period comparison is unavailable for All time as there is no preceding comparative timeframe."
-
-    days_map = {
-        "Last 7 days": 7,
-        "Last 30 days": 30,
-        "Last 90 days": 90,
-    }
-
-    n_days = days_map.get(period_label)
-    if not n_days:
-        return "no_previous_data", "Not enough historical data for period comparison."
-
-    # Current period: [today - (n_days - 1), today + 1 day)
-    curr_start = today - pd.Timedelta(days=n_days - 1)
-    curr_end = today + pd.Timedelta(days=1)
-
-    # Previous period: [today - (2 * n_days - 1), today - (n_days - 1))
-    prev_start = today - pd.Timedelta(days=2 * n_days - 1)
-    prev_end = curr_start
-
-    curr_df = data[(data["Date"] >= curr_start) & (data["Date"] < curr_end)].copy()
-    prev_df = data[(data["Date"] >= prev_start) & (data["Date"] < prev_end)].copy()
-
-    if prev_df.empty:
-        return "no_previous_data", "Not enough historical data for period comparison."
-
-    metrics_def = [
-        ("SleepHours", "Sleep", "hrs", True),
-        ("Mood", "Mood", "/10", True),
-        ("Stress", "Stress", "/10", False),
-        ("Energy", "Energy", "/10", True),
-        ("ExerciseMinutes", "Exercise", "min", True),
-        ("StudyHours", "Study / Work", "hrs", True),
-        ("ScreenTime", "Screen Time", "hrs", False),
-        ("Productivity", "Productivity", "/10", True),
-    ]
-
-    rows = []
-    for col, name, unit, higher_is_better in metrics_def:
-        if col in data.columns:
-            curr_series = curr_df[col].dropna()
-            prev_series = prev_df[col].dropna()
-
-            if curr_series.empty and prev_series.empty:
-                continue
-
-            curr_avg = curr_series.mean() if not curr_series.empty else None
-            prev_avg = prev_series.mean() if not prev_series.empty else None
-
-            if curr_avg is not None and prev_avg is not None:
-                diff = curr_avg - prev_avg
-                abs_diff = abs(diff)
-
-                if abs_diff < 0.05:
-                    dir_label = "→ Steady"
-                    badge_style = "color: #64748B; background: #F1F5F9; border: 1px solid #E2E8F0;"
-                    diff_str = "0.0"
-                else:
-                    is_improving = (diff > 0 and higher_is_better) or (diff < 0 and not higher_is_better)
-                    if is_improving:
-                        dir_label = "↑ Improving"
-                        badge_style = "color: #059669; background: rgba(5, 150, 105, 0.08); border: 1px solid rgba(5, 150, 105, 0.2);"
-                    else:
-                        dir_label = "↓ Declining"
-                        badge_style = "color: #DC2626; background: rgba(220, 38, 38, 0.08); border: 1px solid rgba(220, 38, 38, 0.2);"
-
-                    sign = "+" if diff > 0 else "-"
-                    if unit == "min":
-                        diff_str = f"{sign}{abs_diff:.0f} {unit}"
-                    elif unit == "hrs":
-                        diff_str = f"{sign}{abs_diff:.1f} {unit}"
-                    else:
-                        diff_str = f"{sign}{abs_diff:.1f}"
-
-                def fmt_val(v):
-                    if unit == "min":
-                        return f"{v:.0f} {unit}"
-                    elif unit == "hrs":
-                        return f"{v:.1f} {unit}"
-                    return f"{v:.1f}{unit}"
-
-                curr_str = fmt_val(curr_avg)
-                prev_str = fmt_val(prev_avg)
-            elif curr_avg is not None:
-                curr_str = f"{curr_avg:.1f} {unit}" if unit != "/10" else f"{curr_avg:.1f}/10"
-                prev_str = "N/A"
-                diff_str = "—"
-                dir_label = "— Baseline"
-                badge_style = "color: #64748B; background: #F1F5F9; border: 1px solid #E2E8F0;"
-            else:
-                curr_str = "N/A"
-                prev_str = f"{prev_avg:.1f} {unit}" if unit != "/10" else f"{prev_avg:.1f}/10"
-                diff_str = "—"
-                dir_label = "— Missing"
-                badge_style = "color: #64748B; background: #F1F5F9; border: 1px solid #E2E8F0;"
-
-            rows.append({
-                "metric": name,
-                "current": curr_str,
-                "previous": prev_str,
-                "change": diff_str,
-                "direction": dir_label,
-                "badge_style": badge_style
+    # Compute daily wellness scores
+    daily_scores = []
+    for _, row in sorted_df.iterrows():
+        sc, cat = calculate_wellness_score(
+            row.get("SleepHours"),
+            row.get("Mood"),
+            row.get("Stress"),
+            row.get("Energy"),
+            row.get("ExerciseMinutes"),
+            row.get("ScreenTime"),
+            row.get("Productivity"),
+        )
+        if sc is not None:
+            daily_scores.append({
+                "Date": row["Date"].strftime("%Y-%m-%d"),
+                "Score": round(sc, 1),
+                "Category": cat
             })
 
-    if not rows:
-        return "no_previous_data", "Not enough historical data for period comparison."
+    start_score = daily_scores[0]["Score"] if daily_scores else None
+    end_score = daily_scores[-1]["Score"] if daily_scores else None
+    score_delta = round(end_score - start_score, 1) if (start_score is not None and end_score is not None) else 0.0
 
-    return "success", rows
+    best_day = max(daily_scores, key=lambda x: x["Score"]) if daily_scores else None
+    worst_day = min(daily_scores, key=lambda x: x["Score"]) if daily_scores else None
+
+    consistency_pct = round((days_recorded / total_days_in_period) * 100)
+
+    # Metric averages
+    def get_avg(col):
+        if col in sorted_df.columns:
+            s = sorted_df[col].dropna()
+            return s.mean() if not s.empty else None
+        return None
+
+    return {
+        "days_recorded": days_recorded,
+        "total_days": total_days_in_period,
+        "consistency_pct": consistency_pct,
+        "consistency_str": f"{days_recorded}/{total_days_in_period} days ({consistency_pct}%)",
+        "start_score": start_score,
+        "end_score": end_score,
+        "score_delta": score_delta,
+        "score_delta_str": _fmt_delta(score_delta),
+        "best_day": best_day["Date"] if best_day else "N/A",
+        "best_score": best_day["Score"] if best_day else "N/A",
+        "worst_day": worst_day["Date"] if worst_day else "N/A",
+        "worst_score": worst_day["Score"] if worst_day else "N/A",
+        "avg_sleep": f"{get_avg('SleepHours'):.1f} hrs" if get_avg("SleepHours") is not None else "N/A",
+        "avg_mood": f"{get_avg('Mood'):.1f}/10" if get_avg("Mood") is not None else "N/A",
+        "avg_energy": f"{get_avg('Energy'):.1f}/10" if get_avg("Energy") is not None else "N/A",
+        "avg_stress": f"{get_avg('Stress'):.1f}/10" if get_avg("Stress") is not None else "N/A",
+        "avg_productivity": f"{get_avg('Productivity'):.1f}/10" if get_avg("Productivity") is not None else "N/A",
+        "avg_exercise": f"{get_avg('ExerciseMinutes'):.0f} min" if get_avg("ExerciseMinutes") is not None else "N/A",
+        "avg_screen": f"{get_avg('ScreenTime'):.1f} hrs" if get_avg("ScreenTime") is not None else "N/A",
+        "avg_study": f"{get_avg('StudyHours'):.1f} hrs" if get_avg("StudyHours") is not None else "N/A",
+        "category": daily_scores[-1]["Category"] if daily_scores else "Not recorded"
+    }
 
 
-def show_reports(monthly_report):
-
-    st.subheader("📊 Wellness Reports")
-    st.caption("A compact overview of your wellness progress.")
-
-    # Load existing check-in data
-    data = load_data()
-
-    if data.empty:
-        st.info("No check-in records available yet. Start by recording your daily check-in.")
-        return
-
-    # Prepare reporting data
-    data = data.copy()
-
-    # Parse dates using the same formats as app.py
-    date_values = data["Date"].astype("string").str.strip()
-
-    parsed_dates = pd.to_datetime(
-        date_values,
-        format="%Y-%m-%d",
-        errors="coerce"
-    )
-
-    missing_dates = parsed_dates.isna()
-
-    parsed_dates.loc[missing_dates] = pd.to_datetime(
-        date_values.loc[missing_dates],
-        format="%d-%m-%Y",
-        errors="coerce"
-    )
-
-    data["Date"] = parsed_dates
-
-    numeric_columns = [
-        "SleepHours",
-        "Mood",
-        "Stress",
-        "Energy",
-        "ScreenTime",
-        "ExerciseMinutes",
-        "StudyHours",
-        "Productivity",
-    ]
-
-    for column in numeric_columns:
-        if column in data.columns:
-            data[column] = pd.to_numeric(data[column], errors="coerce")
-
-    data = data.dropna(subset=["Date"])
+def show_reports(monthly_report=None, data=None):
+    """
+    Renders the LifeLens Professional Wellness Report Centre:
+    1. Weekly Wellness Report
+    2. Monthly Wellness Report
+    3. AI Wellness Analysis (on-demand generation with caching)
+    4. Actual vs Predicted Analysis
+    """
+    if data is None:
+        data = load_data()
 
     if data.empty:
-        st.info("No valid check-in dates are available for reporting.")
+        st.html(
+            """
+            <div class="ll-empty">
+                <span class="ll-empty-icon">📊</span>
+                <b style="color:var(--ll-text);font-size:1.1rem;">No Check-in Data Available</b><br>
+                Please complete your daily check-ins to generate personal wellness reports.
+            </div>
+            """
+        )
         return
 
-    # Reporting period
-    period = st.selectbox(
-        "Reporting period",
-        ["Last 7 days", "Last 30 days", "Last 90 days", "All time"],
-        index=1,
-        key="reports_period",
-    )
+    # Clean & normalize dates
+    df = data.copy()
+    if "Date" in df.columns:
+        df["Date"] = normalize_date_series(df["Date"])
+        df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+        df = df.dropna(subset=["Date"]).sort_values("Date")
+        df = df.drop_duplicates(subset=["Date"], keep="last")
+
+    for col in ["SleepHours", "Mood", "Stress", "Energy", "ScreenTime", "ExerciseMinutes", "StudyHours", "Productivity"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
 
     today = pd.Timestamp.today().normalize()
 
-    if period == "Last 7 days":
-        start_date = today - pd.Timedelta(days=6)
-    elif period == "Last 30 days":
-        start_date = today - pd.Timedelta(days=29)
-    elif period == "Last 90 days":
-        start_date = today - pd.Timedelta(days=89)
-    else:
-        start_date = data["Date"].min().normalize()
-
-    filtered_data = data[
-        (data["Date"] >= start_date)
-        & (data["Date"] < today + pd.Timedelta(days=1))
-    ].copy()
-
-    if filtered_data.empty:
-        st.info("No check-ins found in this reporting period.")
-        return
-
-    # Key metrics
-    total_checkins = len(filtered_data)
-
-    def get_average(column):
-        if column in filtered_data.columns:
-            return filtered_data[column].mean()
-        return None
-
-    metrics = [
-        ("📅 Total Check-ins", str(total_checkins)),
-        ("😴 Average Sleep", f"{get_average('SleepHours'):.1f} hrs" if pd.notna(get_average("SleepHours")) else "N/A"),
-        ("😊 Average Mood", f"{get_average('Mood'):.1f}/10" if pd.notna(get_average("Mood")) else "N/A"),
-        ("🧘 Average Stress", f"{get_average('Stress'):.1f}/10" if pd.notna(get_average("Stress")) else "N/A"),
-        ("⚡ Average Energy", f"{get_average('Energy'):.1f}/10" if pd.notna(get_average("Energy")) else "N/A"),
-        ("🏃 Daily Exercise", f"{get_average('ExerciseMinutes'):.0f} min" if pd.notna(get_average("ExerciseMinutes")) else "N/A"),
-        ("📚 Study Time", f"{get_average('StudyHours'):.1f} hrs" if pd.notna(get_average("StudyHours")) else "N/A"),
-        ("🎯 Productivity", f"{get_average('Productivity'):.1f}/10" if pd.notna(get_average("Productivity")) else "N/A"),
-    ]
-
-    st.markdown("#### Your Wellness Metrics")
-
-    with st.container(key="reports_metrics"):
-        for row_start in range(0, len(metrics), 4):
-            cols = st.columns(4, gap="small")
-
-            for col, (label, value) in zip(
-                cols, metrics[row_start:row_start + 4]
-            ):
-                with col:
-                    st.metric(label, value)
-
-    # -------------------------------------------------------------------------
-    # Wellness Trends (Daily trends across actual stored metrics)
-    # -------------------------------------------------------------------------
-    st.markdown("#### Wellness Trends")
-
-    if total_checkins < 2:
-        st.info("💡 Record check-ins across multiple days to reveal continuous trend curves. Showing single check-in point below:")
-
-    # 1. Daily Wellness Reflections Trends
-    st.markdown(
+    st.html(
         """
-        <div style="font-size: 13.5px; font-weight: 600; color: #334155; margin-top: 6px; margin-bottom: 6px;">
-            Daily Wellness Trends
+        <div class="ll-page-head">
+            <span class="ll-eyebrow">📈 Intelligence Hub · Longitudinal Analytics</span>
+            <h1>Wellness Report Centre</h1>
+            <p>Comprehensive retrospective reports, longitudinal habit trajectories, and predictive accuracy audits.</p>
         </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    wellness_configs = [
-        ("SleepHours", "😴 Sleep Hours", "hrs", "#4F46E5"),
-        ("Mood", "😊 Mood Rating", "/10", "#059669"),
-        ("Energy", "⚡ Energy Level", "/10", "#D97706"),
-        ("Stress", "🧘 Stress Level", "/10", "#DC2626"),
-        ("Productivity", "🎯 Productivity", "/10", "#2563EB"),
-    ]
-
-    active_wellness_charts = []
-    for col_name, title, unit, color in wellness_configs:
-        if col_name in filtered_data.columns and filtered_data[col_name].notna().any():
-            fig = _create_compact_trend_chart(filtered_data, col_name, title, unit, color)
-            if fig is not None:
-                active_wellness_charts.append(fig)
-
-    for i in range(0, len(active_wellness_charts), 2):
-        pair = active_wellness_charts[i:i + 2]
-        if len(pair) == 2:
-            c1, c2 = st.columns(2, gap="medium")
-            with c1:
-                st.plotly_chart(pair[0], use_container_width=True)
-            with c2:
-                st.plotly_chart(pair[1], use_container_width=True)
-        else:
-            c1, _ = st.columns(2, gap="medium")
-            with c1:
-                st.plotly_chart(pair[0], use_container_width=True)
-
-    # 2. Habit Trends
-    st.markdown(
         """
-        <div style="font-size: 13.5px; font-weight: 600; color: #334155; margin-top: 10px; margin-bottom: 6px;">
-            Habit Trends
-        </div>
-        """,
-        unsafe_allow_html=True
     )
 
-    habit_configs = [
-        ("ScreenTime", "💻 Screen Time", "hrs", "#0284C7"),
-        ("ExerciseMinutes", "🏃 Exercise Duration", "min", "#16A34A"),
-        ("StudyHours", "📚 Study / Focused Work", "hrs", "#7C3AED"),
-    ]
+    report_tabs = st.tabs([
+        "📅 Weekly Wellness Report",
+        "🗓️ Monthly Wellness Report",
+        "🤖 AI Wellness Analysis",
+        "🎯 Actual vs Predicted Analysis"
+    ])
 
-    active_habit_charts = []
-    for col_name, title, unit, color in habit_configs:
-        if col_name in filtered_data.columns and filtered_data[col_name].notna().any():
-            fig = _create_compact_trend_chart(filtered_data, col_name, title, unit, color)
-            if fig is not None:
-                active_habit_charts.append(fig)
+    # =========================================================================
+    # TAB 1: WEEKLY WELLNESS REPORT
+    # =========================================================================
+    with report_tabs[0]:
+        weekly_start = today - pd.Timedelta(days=6)
+        weekly_df = df[(df["Date"] >= weekly_start) & (df["Date"] <= today)].copy()
+        period_str = f"{weekly_start.strftime('%b %d, %Y')} – {today.strftime('%b %d, %Y')}"
 
-    for i in range(0, len(active_habit_charts), 2):
-        pair = active_habit_charts[i:i + 2]
-        if len(pair) == 2:
-            c1, c2 = st.columns(2, gap="medium")
-            with c1:
-                st.plotly_chart(pair[0], use_container_width=True)
-            with c2:
-                st.plotly_chart(pair[1], use_container_width=True)
+        if weekly_df.empty:
+            st.info(f"No check-ins found for the current week ({period_str}). Record a daily check-in to unlock your weekly report.")
         else:
-            c1, _ = st.columns(2, gap="medium")
-            with c1:
-                st.plotly_chart(pair[0], use_container_width=True)
+            w_stats = _compute_period_stats(weekly_df, total_days_in_period=7)
 
-    # -------------------------------------------------------------------------
-    # 📈 What Changed? (Historical Insights Section)
-    # -------------------------------------------------------------------------
-    st.markdown(
-        f"""
-        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 18px; margin-bottom: 8px;">
-            <div style="font-size: 17px; font-weight: 700; color: #0F172A; letter-spacing: -0.01em;">
-                📈 What Changed?
-            </div>
-            <div style="font-size: 12px; color: #64748B;">
-                Period: <span style="font-weight: 600; color: #2563EB;">{period}</span> · Comparing earliest to latest records
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+            # Incomplete period notification
+            if w_stats["days_recorded"] < 7:
+                st.warning(
+                    f"⚠️ **Incomplete Reporting Period**: {w_stats['days_recorded']} of 7 days recorded for this week ({w_stats['consistency_pct']}% consistency). "
+                    "Statistics and averages are calculated strictly from your actual recorded days."
+                )
 
-    if total_checkins < 2:
-        st.info("More check-ins are needed to identify meaningful changes across this period.")
-    else:
-        insights = _generate_historical_insights(filtered_data, period)
-        if not insights:
-            st.info("No comparative metric values are available in the selected period.")
-        else:
-            card_cols = st.columns(3, gap="medium")
-            for col, item in zip(card_cols, insights):
-                with col:
-                    st.markdown(
-                        f"""
-                        <div style="
-                            background: {item['bg_tint']};
-                            border: 1px solid {item['border_color']};
-                            border-radius: 12px;
-                            padding: 14px 16px;
-                            height: 100%;
-                            display: flex;
-                            flex-direction: column;
-                            justify-content: space-between;
-                        ">
-                            <div>
-                                <div style="font-size: 11px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px;">
-                                    {item['title']}
-                                </div>
-                                <div style="font-size: 15px; font-weight: 750; color: #0F172A; margin-bottom: 4px;">
-                                    {item['metric_title']}
-                                </div>
-                                <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px;">
-                                    <span style="font-size: 12.5px; font-weight: 600; color: #334155;">{item['from_to']}</span>
-                                    <span style="font-size: 12px; font-weight: 700; color: {item['delta_color']};">{item['delta']}</span>
-                                </div>
-                            </div>
-                            <div style="font-size: 12px; color: #475569; line-height: 1.45; border-top: 1px solid rgba(0,0,0,0.06); padding-top: 6px; margin-top: 4px;">
-                                {item['explanation']}
-                            </div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
+            # Executive Score Header Cards
+            with st.container(key="reports_exec_metrics"):
+                c1, c2, c3, c4 = st.columns(4, gap="small")
+                with c1:
+                    st.metric("Starting Score", f"{w_stats['start_score']:.0f}/100" if w_stats['start_score'] is not None else "N/A")
+                with c2:
+                    st.metric("Ending Score", f"{w_stats['end_score']:.0f}/100" if w_stats['end_score'] is not None else "N/A", delta=w_stats["score_delta_str"])
+                with c3:
+                    st.metric("Check-in Consistency", w_stats["consistency_str"])
+                with c4:
+                    with st.container(key="reports_category_metric"):
+                        st.metric("Wellness Category", w_stats["category"])
+
+            st.markdown("#### Average Weekly Lifestyle Indicators")
+            with st.container(key="reports_lifestyle_metrics"):
+                m_cols = st.columns(4, gap="small")
+                with m_cols[0]:
+                    st.metric("😴 Avg Sleep", w_stats["avg_sleep"])
+                    st.metric("🏃 Daily Exercise", w_stats["avg_exercise"])
+                with m_cols[1]:
+                    st.metric("😊 Avg Mood", w_stats["avg_mood"])
+                    st.metric("💻 Screen Time", w_stats["avg_screen"])
+                with m_cols[2]:
+                    st.metric("⚡ Avg Energy", w_stats["avg_energy"])
+                    st.metric("📚 Study / Work", w_stats["avg_study"])
+                with m_cols[3]:
+                    st.metric("🧘 Avg Stress", w_stats["avg_stress"])
+                    st.metric("🎯 Productivity", w_stats["avg_productivity"])
+
+            # Peak & Challenging Days
+            p1, p2 = st.columns(2, gap="medium")
+            with p1:
+                st.html(
+                    f"""
+                    <div class="ll-card" style="padding: 14px 18px;">
+                        <span class="ll-chip" style="color:var(--ll-good);">🌟 Peak Wellness Day</span>
+                        <div style="font-size: 1.12rem; font-weight: 600; margin-top: 8px;">{w_stats['best_day']}</div>
+                        <div style="color:var(--ll-muted); font-size: 0.86rem;">Wellness Score: <b>{w_stats['best_score']}/100</b></div>
+                    </div>
+                    """
+                )
+            with p2:
+                st.html(
+                    f"""
+                    <div class="ll-card" style="padding: 14px 18px;">
+                        <span class="ll-chip" style="color:var(--ll-warn);">🌱 Recovery / Challenging Day</span>
+                        <div style="font-size: 1.12rem; font-weight: 600; margin-top: 8px;">{w_stats['worst_day']}</div>
+                        <div style="color:var(--ll-muted); font-size: 0.86rem;">Wellness Score: <b>{w_stats['worst_score']}/100</b></div>
+                    </div>
+                    """
+                )
+
+            # Weekly Trend Visualizations
+            st.markdown("#### Weekly Indicator Trajectories")
+            ch_cols = st.columns(2, gap="medium")
+            with ch_cols[0]:
+                fig_sleep = _create_compact_trend_chart(weekly_df, "SleepHours", "😴 Sleep Duration", "hrs", "#8B5CF6")
+                if fig_sleep: st.plotly_chart(fig_sleep, use_container_width=True)
+                fig_energy = _create_compact_trend_chart(weekly_df, "Energy", "⚡ Vital Energy", "/10", "#FBBF24")
+                if fig_energy: st.plotly_chart(fig_energy, use_container_width=True)
+            with ch_cols[1]:
+                fig_mood = _create_compact_trend_chart(weekly_df, "Mood", "😊 Mood Rating", "/10", "#34D399")
+                if fig_mood: st.plotly_chart(fig_mood, use_container_width=True)
+                fig_stress = _create_compact_trend_chart(weekly_df, "Stress", "🧘 Stress Level", "/10", "#FB7185")
+                if fig_stress: st.plotly_chart(fig_stress, use_container_width=True)
+
+            # PDF Export: explicit preparation & deferred user-triggered download
+            st.markdown("#### Export Report")
+            w_pdf_key = f"cached_pdf_weekly_{w_stats['days_recorded']}_{w_stats['end_score']}_{w_stats['start_score']}"
+
+            if st.session_state.get("show_weekly_pdf_download") and w_pdf_key in st.session_state:
+                dl_col1, dl_col2 = st.columns([3.2, 0.8], gap="small", vertical_alignment="center")
+                with dl_col1:
+                    st.download_button(
+                        label="⬇️ Download Weekly Wellness Report (PDF)",
+                        data=st.session_state[w_pdf_key],
+                        file_name="LifeLens_Weekly_Report.pdf",
+                        mime="application/pdf",
+                        key="btn_download_weekly_pdf",
+                        on_click="ignore",
+                        use_container_width=True
                     )
-
-    # -------------------------------------------------------------------------
-    # 📊 Period Comparison (Current Period vs Preceding Equivalent Period)
-    # -------------------------------------------------------------------------
-    st.markdown(
-        f"""
-        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 22px; margin-bottom: 8px;">
-            <div style="font-size: 17px; font-weight: 700; color: #0F172A; letter-spacing: -0.01em;">
-                📊 Period Comparison
-            </div>
-            <div style="font-size: 12px; color: #64748B;">
-                Current: <span style="font-weight: 600; color: #2563EB;">{period}</span> vs Immediately Preceding Period
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    status_type, comparison_data = _compute_period_comparison(data, period, today)
-
-    if status_type == "unavailable_all_time":
-        st.info("Period comparison is unavailable for All time as there is no preceding comparative timeframe.")
-    elif status_type == "no_previous_data":
-        st.info("Not enough historical data for period comparison.")
-    else:
-        # Build clean, responsive HTML comparison table (no leading indentation so markdown does not parse as code)
-        table_rows = []
-        for row in comparison_data:
-            table_rows.append(
-                f'<tr style="border-bottom: 1px solid #F1F5F9;">'
-                f'<td style="padding: 10px 14px; font-weight: 600; color: #1E293B; font-size: 13.5px;">{row["metric"]}</td>'
-                f'<td style="padding: 10px 14px; font-weight: 700; color: #0F172A; font-size: 13px;">{row["current"]}</td>'
-                f'<td style="padding: 10px 14px; color: #64748B; font-size: 13px;">{row["previous"]}</td>'
-                f'<td style="padding: 10px 14px; font-weight: 600; font-size: 13px;">{row["change"]}</td>'
-                f'<td style="padding: 10px 14px;"><span style="display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11.5px; font-weight: 700; {row["badge_style"]}">{row["direction"]}</span></td>'
-                f'</tr>'
-            )
-        table_rows_html = "".join(table_rows)
-
-        table_html = (
-            '<div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; overflow-x: auto; box-shadow: 0 1px 3px rgba(15,23,42,0.03); margin-bottom: 14px;">'
-            '<table style="width: 100%; border-collapse: collapse; text-align: left; min-width: 500px;">'
-            '<thead>'
-            '<tr style="background: #F8FAFC; border-bottom: 1px solid #E2E8F0;">'
-            '<th style="padding: 10px 14px; font-size: 11.5px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.04em;">Metric</th>'
-            '<th style="padding: 10px 14px; font-size: 11.5px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.04em;">Current Average</th>'
-            '<th style="padding: 10px 14px; font-size: 11.5px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.04em;">Previous Average</th>'
-            '<th style="padding: 10px 14px; font-size: 11.5px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.04em;">Change</th>'
-            '<th style="padding: 10px 14px; font-size: 11.5px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.04em;">Direction</th>'
-            '</tr>'
-            '</thead>'
-            f'<tbody>{table_rows_html}</tbody>'
-            '</table>'
-            '</div>'
-        )
-        st.markdown(table_html, unsafe_allow_html=True)
-
-    # -------------------------------------------------------------------------
-    # Compact weekly and monthly summaries
-    # -------------------------------------------------------------------------
-    st.markdown("#### Wellness Summaries")
-
-    weekly_start = today - pd.Timedelta(days=6)
-
-    weekly_data = data[
-        (data["Date"] >= weekly_start)
-        & (data["Date"] < today + pd.Timedelta(days=1))
-    ].copy()
-
-    weekly_report = generate_weekly_report(weekly_data)
-
-    weekly_col, monthly_col = st.columns(2, gap="medium")
-
-    with weekly_col:
-        with st.container(key="reports_weekly_summary", border=True):
-            st.markdown("**📅 Weekly Summary**")
-
-            if weekly_report:
-                st.markdown(
-                    weekly_report["headline"]
-                )
-
-                st.caption(
-                    f"🏆 Achievement: {weekly_report['badge']}"
-                )
-
-                st.caption(
-                    f"🎯 Focus: {weekly_report['mission']}"
-                )
+                with dl_col2:
+                    if st.button("Close", key="close_weekly_pdf", use_container_width=True):
+                        st.session_state["show_weekly_pdf_download"] = False
+                        st.rerun()
             else:
-                st.caption(
-                    "Not enough recent check-ins for a weekly summary."
+                if st.button("📄 Generate Weekly Wellness Report (PDF)", key="btn_prep_weekly_pdf", type="primary", use_container_width=True):
+                    with st.spinner("Generating Weekly PDF Report..."):
+                        pdf_data = generate_wellness_pdf(
+                            "Weekly",
+                            w_stats,
+                            period_str,
+                            ai_text=f"Weekly consistency reached {w_stats['consistency_pct']}% with an ending Wellness Score of {w_stats['end_score']}/100. Peak day recorded on {w_stats['best_day']}.",
+                            recommendations=[
+                                "Maintain stable sleep duration to support mental mood balance.",
+                                "Keep screen exposure under control during evening hours.",
+                                "Incorporate regular 30-minute movement sessions to sustain high energy levels."
+                            ]
+                        )
+                        st.session_state[w_pdf_key] = pdf_data
+                        st.session_state["show_weekly_pdf_download"] = True
+                        st.rerun()
+
+    # =========================================================================
+    # TAB 2: MONTHLY WELLNESS REPORT
+    # =========================================================================
+    with report_tabs[1]:
+        monthly_start = today - pd.Timedelta(days=29)
+        monthly_df = df[(df["Date"] >= monthly_start) & (df["Date"] <= today)].copy()
+        period_m_str = f"{monthly_start.strftime('%b %d, %Y')} – {today.strftime('%b %d, %Y')}"
+
+        if monthly_df.empty:
+            st.info(f"No check-ins found for the past 30 days ({period_m_str}).")
+        else:
+            m_stats = _compute_period_stats(monthly_df, total_days_in_period=30)
+
+            if m_stats["days_recorded"] < 30:
+                st.warning(
+                    f"⚠️ **Incomplete Reporting Period**: {m_stats['days_recorded']} of 30 days recorded ({m_stats['consistency_pct']}% consistency). "
+                    "Longitudinal statistics are derived strictly from available check-ins without placeholder assumptions."
                 )
 
-    with monthly_col:
-        with st.container(key="reports_monthly_summary", border=True):
-            st.markdown("**🗓️ Monthly Summary**")
+            with st.container(key="reports_exec_metrics_monthly"):
+                mc1, mc2, mc3, mc4 = st.columns(4, gap="small")
+                with mc1:
+                    st.metric("Starting Score (30d)", f"{m_stats['start_score']:.0f}/100" if m_stats['start_score'] is not None else "N/A")
+                with mc2:
+                    st.metric("Ending Score", f"{m_stats['end_score']:.0f}/100" if m_stats['end_score'] is not None else "N/A", delta=m_stats["score_delta_str"])
+                with mc3:
+                    st.metric("Monthly Consistency", m_stats["consistency_str"])
+                with mc4:
+                    with st.container(key="reports_category_metric_monthly"):
+                        st.metric("Overall Category", m_stats["category"])
 
+            st.markdown("#### Monthly Lifestyle Averages")
+            with st.container(key="reports_lifestyle_metrics_monthly"):
+                m_cols2 = st.columns(4, gap="small")
+                with m_cols2[0]:
+                    st.metric("😴 Avg Sleep", m_stats["avg_sleep"])
+                    st.metric("🏃 Daily Exercise", m_stats["avg_exercise"])
+                with m_cols2[1]:
+                    st.metric("😊 Avg Mood", m_stats["avg_mood"])
+                    st.metric("💻 Screen Time", m_stats["avg_screen"])
+                with m_cols2[2]:
+                    st.metric("⚡ Avg Energy", m_stats["avg_energy"])
+                    st.metric("📚 Study / Work", m_stats["avg_study"])
+                with m_cols2[3]:
+                    st.metric("🧘 Avg Stress", m_stats["avg_stress"])
+                    st.metric("🎯 Productivity", m_stats["avg_productivity"])
+
+            # Monthly Highlights Summary
             if monthly_report:
-                st.caption(
-                    f"🏃 Active on {monthly_report['exercise_days']} "
-                    "of your last 30 check-ins."
+                st.markdown("#### Monthly Executive Summary")
+                st.html(
+                    f"""
+                    <div class="ll-card">
+                        <div style="font-size: 1.05rem; line-height: 1.6; margin-bottom: 10px;">
+                            <b>🏆 Biggest Win:</b> {monthly_report.get('biggest_win', 'Consistently tracking habits across the month.')}
+                        </div>
+                        <div style="font-size: 1.05rem; line-height: 1.6; margin-bottom: 10px; color: var(--ll-warn);">
+                            <b>⚠️ Area for Growth:</b> {monthly_report.get('challenge', 'Focus on evening screen time and recovery.')}
+                        </div>
+                        <div style="font-size: 1.05rem; line-height: 1.6; color: var(--ll-violet);">
+                            <b>🚀 Next Horizon:</b> {monthly_report.get('opportunity', 'Aim for 85%+ check-in compliance next month.')}
+                        </div>
+                    </div>
+                    """
                 )
 
-                st.markdown(
-                    f"**💚 Biggest Win:** {monthly_report['biggest_win']}"
-                )
+            # PDF Export: explicit preparation & deferred user-triggered download
+            st.markdown("#### Export Report")
+            m_pdf_key = f"cached_pdf_monthly_{m_stats['days_recorded']}_{m_stats['end_score']}_{m_stats['start_score']}"
 
-                st.markdown(
-                    f"**⚠️ Needs Attention:** {monthly_report['challenge']}"
-                )
-
-                st.markdown(
-                    f"**🚀 Next Opportunity:** {monthly_report['opportunity']}"
-                )
+            if st.session_state.get("show_monthly_pdf_download") and m_pdf_key in st.session_state:
+                mdl_col1, mdl_col2 = st.columns([3.2, 0.8], gap="small", vertical_alignment="center")
+                with mdl_col1:
+                    st.download_button(
+                        label="⬇️ Download Monthly Wellness Report (PDF)",
+                        data=st.session_state[m_pdf_key],
+                        file_name="LifeLens_Monthly_Report.pdf",
+                        mime="application/pdf",
+                        key="btn_download_monthly_pdf",
+                        on_click="ignore",
+                        use_container_width=True
+                    )
+                with mdl_col2:
+                    if st.button("Close", key="close_monthly_pdf", use_container_width=True):
+                        st.session_state["show_monthly_pdf_download"] = False
+                        st.rerun()
             else:
-                st.caption("Monthly summary is not available yet.")
+                if st.button("📄 Generate Monthly Wellness Report (PDF)", key="btn_prep_monthly_pdf", type="primary", use_container_width=True):
+                    with st.spinner("Generating Monthly PDF Report..."):
+                        pdf_data = generate_wellness_pdf(
+                            "Monthly",
+                            m_stats,
+                            period_m_str,
+                            ai_text=f"Monthly consistency reached {m_stats['consistency_pct']}% across {m_stats['days_recorded']} recorded check-in days. Net score delta observed: {m_stats['score_delta_str']}.",
+                            recommendations=[
+                                monthly_report.get("opportunity", "Maintain a balanced sleep and movement schedule.") if monthly_report else "Maintain regular sleep routines.",
+                                "Focus on sustainable micro-habits rather than sudden routine disruptions.",
+                                "Review monthly correlation heatmaps to recognize triggers between stress and screen time."
+                            ]
+                        )
+                        st.session_state[m_pdf_key] = pdf_data
+                        st.session_state["show_monthly_pdf_download"] = True
+                        st.rerun()
 
-    # CSV export
-    with st.container(key="reports_download"):
-        st.download_button(
-            label="⬇️ Download Wellness Report (CSV)",
-            data=filtered_data.to_csv(index=False).encode("utf-8"),
-            file_name="lifelens_wellness_report.csv",
-            mime="text/csv",
-            use_container_width=True,
+    # =========================================================================
+    # TAB 3: AI WELLNESS ANALYSIS (ON-DEMAND & CACHED)
+    # =========================================================================
+    with report_tabs[2]:
+        st.markdown("### 🤖 V5 AI Wellness Intelligence")
+        st.markdown(
+            "Synthesize your recent behavioral facts, metric deltas, and habit momentum into actionable, human-like summaries "
+            "powered by the fine-tuned FLAN-T5 model. Factual numerical truth is calculated strictly in Python before narrative explanation."
         )
+
+        cache_key = f"cached_ai_analysis_{len(df)}_{df.iloc[-1]['Date'].strftime('%Y%m%d') if not df.empty else 'none'}"
+
+        col_act, col_status = st.columns([1.5, 3], gap="medium", vertical_alignment="center")
+        with col_act:
+            run_gen = st.button("✨ Generate AI Analysis", type="primary", use_container_width=True)
+
+        if run_gen:
+            with st.spinner("🤖 Grounding facts and generating AI synthesis with fine-tuned V5 model..."):
+                try:
+                    facts = build_weekly_facts(df)
+                    analysis_text = explain_weekly_facts(facts)
+                    st.session_state[cache_key] = analysis_text
+                    st.session_state["cached_reports_ai_analysis"] = analysis_text
+                    st.session_state["cached_reports_facts"] = facts
+                except Exception as e:
+                    st.error(f"AI Generation unavailable: {e}")
+                    st.session_state[cache_key] = None
+
+        cached_analysis = st.session_state.get(cache_key) or st.session_state.get("cached_reports_ai_analysis")
+        if cached_analysis:
+            st.success("✓ AI Synthesis Loaded (Cached from latest execution)")
+            st.html(
+                f"""
+                <div class="ll-card" style="margin-top: 14px;">
+                    <div style="font-size: 0.74rem; font-weight: 750; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ll-violet); margin-bottom: 12px;">
+                        FLAN-T5 GROUNDED NARRATIVE SYNTHESIS
+                    </div>
+                    <div style="font-size: 1.02rem; line-height: 1.7; color: var(--ll-text); white-space: pre-line;">
+                        {cached_analysis}
+                    </div>
+                </div>
+                """
+            )
+        else:
+            st.info("Click **✨ Generate AI Analysis** above to initiate grounded inference with your current data.")
+
+    # =========================================================================
+    # TAB 4: ACTUAL VS PREDICTED ANALYSIS
+    # =========================================================================
+    with report_tabs[3]:
+        st.markdown("### 🎯 Actual Observations vs Machine Learning Forecasts")
+        st.markdown(
+            "Audit the predictive accuracy of your trained scikit-learn models. "
+            "This table strictly compares historical predictions against the actual check-in observations recorded on that exact target date. "
+            "**Target dates match observation dates 1:1.** Missing predictions are never displayed as zeros."
+        )
+
+        match_df, summary_metrics = get_actual_vs_predicted_data(df)
+
+        if match_df.empty:
+            st.html(
+                """
+                <div class="ll-empty">
+                    <span class="ll-empty-icon">🎯</span>
+                    <b style="color:var(--ll-text);font-size:1.05rem;">No Matched Prediction Pairs Found Yet</b><br>
+                    Predictions are logged when daily tomorrow forecasts are generated.<br>
+                    As you record daily check-ins on days with prior forecasts, accuracy audits will appear here.
+                </div>
+                """
+            )
+        else:
+            # Summary Metrics Cards
+            total_target_dates = match_df["TargetDate"].nunique()
+            avg_overall_mae = round(match_df["Error"].mean(), 2)
+
+            with st.container(key="avp_metrics"):
+                sc1, sc2, sc3 = st.columns(3, gap="small")
+                with sc1:
+                    st.metric("Target Dates Audited", f"{total_target_dates} dates")
+                with sc2:
+                    st.metric("Overall Average MAE", f"{avg_overall_mae:.2f}")
+                with sc3:
+                    st.metric("Accuracy Status", "Calibrated" if avg_overall_mae < 1.8 else "Adapting")
+
+            st.markdown("#### Mean Absolute Error (MAE) by Metric")
+            with st.container(key="avp_mae_metrics"):
+                mae_cols = st.columns(4, gap="small")
+                metrics_list = list(summary_metrics.items())
+                for idx, (m_name, m_info) in enumerate(metrics_list):
+                    c = mae_cols[idx % 4]
+                    with c:
+                        st.metric(f"{m_name} Error", f"±{m_info['MAE']:.2f}", help=f"Audited over {m_info['Count']} predictions. Mean Actual: {m_info['MeanActual']}, Mean Predicted: {m_info['MeanPredicted']}")
+
+            st.markdown("#### Historical Predictions vs Actual Observations")
+            # Interactive Filter by Metric
+            sel_metric = st.selectbox(
+                "Filter Comparison by Metric",
+                ["All Metrics"] + sorted(match_df["Metric"].unique().tolist()),
+                index=0
+            )
+
+            display_df = match_df if sel_metric == "All Metrics" else match_df[match_df["Metric"] == sel_metric]
+
+            st.dataframe(
+                display_df[[
+                    "TargetDate",
+                    "PredictionDate",
+                    "Metric",
+                    "Predicted",
+                    "Actual",
+                    "Difference",
+                    "Error"
+                ]].sort_values(["TargetDate", "Metric"], ascending=[False, True]),
+                use_container_width=True,
+                hide_index=True
+            )
