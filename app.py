@@ -111,6 +111,120 @@ def load_css():
         )
 load_css()
 
+# ==========================================================
+# LIFELENS UI HELPERS  (presentation only — no calculations)
+# ==========================================================
+import html as _html
+
+
+def _esc(value):
+    """HTML-escape any value before placing it inside markup."""
+    return _html.escape(str(value))
+
+
+def _fmt_num(value, decimals=1):
+    """Format an existing value for display: 7.0 -> '7', 7.5 -> '7.5'."""
+    number = _valid_number(value)
+    if number is None:
+        return None
+    text = f"{number:.{decimals}f}"
+    return text.rstrip("0").rstrip(".") if "." in text else text
+
+
+def ll_section(icon, title, subtitle=""):
+    sub = f'<div class="ll-section-sub">{_esc(subtitle)}</div>' if subtitle else ""
+    st.html(
+        f'<div class="ll-section-head"><div class="ll-section-title">'
+        f'<span>{icon}</span>{_esc(title)}</div>{sub}</div>'
+    )
+
+
+def ll_style_fig(fig, accent=None, height=None):
+    """Re-skin an EXISTING Plotly figure for the dark theme (colours only)."""
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Inter, system-ui, sans-serif", color="#B9B5DC"),
+        title_font=dict(color="#F4F2FF", size=15),
+        hoverlabel=dict(bgcolor="#17163A", font_color="#F4F2FF"),
+    )
+    fig.update_xaxes(gridcolor="rgba(255,255,255,0.06)", linecolor="rgba(255,255,255,0.10)",
+                     zerolinecolor="rgba(255,255,255,0.10)")
+    fig.update_yaxes(gridcolor="rgba(255,255,255,0.06)", linecolor="rgba(255,255,255,0.10)",
+                     zerolinecolor="rgba(255,255,255,0.10)")
+    if accent:
+        fig.update_traces(line_color=accent, marker_color=accent)
+    if height:
+        fig.update_layout(height=height)
+    return fig
+
+
+def ll_style_radar(fig):
+    ll_style_fig(fig)
+    fig.update_layout(
+        polar=dict(
+            bgcolor="rgba(0,0,0,0)",
+            radialaxis=dict(gridcolor="rgba(255,255,255,0.10)", linecolor="rgba(255,255,255,0.10)",
+                            tickfont=dict(color="#8F8BB8")),
+            angularaxis=dict(gridcolor="rgba(255,255,255,0.10)", linecolor="rgba(255,255,255,0.10)",
+                             tickfont=dict(color="#F4F2FF")),
+        )
+    )
+    fig.update_traces(line_color="#A78BFA", fillcolor="rgba(139, 92, 246, 0.28)",
+                      marker_color="#F472B6", selector=dict(type="scatterpolar"))
+    return fig
+
+
+_CATEGORY_CLASS = {
+    "Excellent": "ll-cat-excellent",
+    "Healthy": "ll-cat-healthy",
+    "Needs Improvement": "ll-cat-needs",
+    "At Risk": "ll-cat-risk",
+}
+
+_STATUS_TONE = {
+    "Excellent": "good",
+    "Good": "good",
+    "Fair": "fair",
+    "Needs Improvement": "bad",
+}
+
+
+def ll_parse_report(text):
+    """
+    Split the existing NLP report into its own headings for display.
+    Returns [(heading, body), ...]; empty list if headings are not found
+    (the caller then shows the untouched raw text).
+    """
+    cleaned = re.sub(r"\*\*", "", str(text))
+    pattern = re.compile(
+        r"(?:^|\s)(?:\d\.\s*)?(OVERALL|KEY FACTOR|PATTERN|PRIORITY)\s*:\s*",
+        re.IGNORECASE,
+    )
+    matches = list(pattern.finditer(cleaned))
+    sections = []
+    for i, m in enumerate(matches):
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(cleaned)
+        body = re.sub(r"\s*\d\.\s*$", "", cleaned[m.end():end].strip())
+        if body:
+            sections.append((m.group(1).title(), body))
+    return sections
+
+
+try:
+    # Existing Python-side forecast direction logic (same facts the NLP
+    # forecast explanation uses). Imported, never modified.
+    from ml.nlp.reporter import _build_forecast_facts as _forecast_facts
+except Exception:  # pragma: no cover - arrows simply won't render
+    _forecast_facts = None
+
+_FORECAST_UNITS = {
+    "Mood": "/10", "Energy": "/10", "Stress": "/10", "Productivity": "/10",
+    "SleepHours": " h", "ExerciseMinutes": " min", "ScreenTime": " h",
+}
+
+
 st.markdown(
     """
     <a href="#top" class="lifelens-back-to-top" title="Back to top">
@@ -134,7 +248,20 @@ if 12 <= today.hour < 17:
 elif today.hour >= 17:
     greeting = "🌙 Good Evening"
 
-show_hero(greeting, today)
+st.html(
+    f"""
+    <div class="ll-header">
+        <div class="ll-brand">
+            <div class="ll-brand-mark">🌱</div>
+            <div>
+                <div class="ll-brand-name">LifeLens</div>
+                <div class="ll-brand-tag">Your personal wellness command center</div>
+            </div>
+        </div>
+        <div class="ll-date-pill"><span class="ll-dot"></span>Today • {today.strftime("%b")} {today.day}</div>
+    </div>
+    """
+)
 data = load_data()
 
 if not data.empty:
@@ -304,15 +431,15 @@ today = datetime.now()
 selected_tab = show_navigation()
 
 if selected_tab == "📝 Daily Check-in":
-    st.markdown('''
-        <div style="margin-bottom: 12px;">
-            <div style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; background: rgba(37, 99, 235, 0.08); border: 1px solid rgba(37, 99, 235, 0.2); color: #2563EB; font-size: 11px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; margin-bottom: 4px;">
-                <span>⏱</span> Daily Check-in · ~1 min
-            </div>
-            <h1 style="margin: 0 0 2px 0; font-size: 24px; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">Daily Check-in</h1>
-            <p style="margin: 0; font-size: 13px; color: #475569; line-height: 1.4;">Take a minute to reflect on your day and keep your wellness picture up to date.</p>
+    st.html(
+        """
+        <div class="ll-page-head">
+            <span class="ll-eyebrow">⏱ Daily Check-in · ~1 min</span>
+            <h1>Daily Check-in</h1>
+            <p>Take a minute to reflect and keep your wellness picture up to date.</p>
         </div>
-    ''', unsafe_allow_html=True)
+        """
+    )
 
     if st.session_state.get("checkin_success_message"):
         st.success(st.session_state.pop("checkin_success_message"))
@@ -324,22 +451,24 @@ if selected_tab == "📝 Daily Check-in":
         date = checkin_date
         formatted_date_display = checkin_date.strftime("%B %d, %Y").replace(" 0", " ")
 
-        st.markdown(f'''
-            <div style="margin-bottom: 12px; display: inline-flex; align-items: center; gap: 8px; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 6px 14px; border-radius: 8px;">
-                <span style="font-size: 13px; font-weight: 600; color: #64748B;">📅 Check-in date:</span>
-                <span style="font-size: 13.5px; font-weight: 700; color: #1E293B;">{formatted_date_display}</span>
-                <span style="font-size: 11px; font-weight: 600; color: #2563EB; background: rgba(37, 99, 235, 0.08); padding: 1px 7px; border-radius: 999px;">Today</span>
+        st.html(f"""
+            <div class="ll-date-chip">
+                <span class="muted">📅 Check-in date</span>
+                <b>{formatted_date_display}</b>
+                <span class="tag">Today</span>
             </div>
-        ''', unsafe_allow_html=True)
+        """)
 
         # CARD 1 — 🌱 DAILY HABITS (Compact 2x2 slider grid)
         with st.container(border=True, key="daily_habits_panel"):
-            st.markdown('''
-                <div style="margin-bottom: 8px;">
-                    <h3 style="margin: 0 0 2px 0; font-size: 16px; font-weight: 700; color: #1E293B;">🌱 Daily Habits</h3>
-                    <div style="font-size: 12px; color: #64748B;">Track the behaviours that shaped your day.</div>
+            st.html(
+                """
+                <div class="ll-panel-head">
+                    <h3>🌱 Daily Habits</h3>
+                    <span>Track the behaviours that shaped your day.</span>
                 </div>
-            ''', unsafe_allow_html=True)
+                """
+            )
 
             h_row1_col1, h_row1_col2 = st.columns(2, gap="medium")
             with h_row1_col1:
@@ -387,12 +516,14 @@ if selected_tab == "📝 Daily Check-in":
 
         # CARD 2 — 💭 PERSONAL REFLECTIONS (Compact 2x2 dropdown grid)
         with st.container(border=True, key="personal_reflections_panel"):
-            st.markdown('''
-                <div style="margin-bottom: 8px;">
-                    <h3 style="margin: 0 0 2px 0; font-size: 16px; font-weight: 700; color: #1E293B;">💭 Personal Reflections</h3>
-                    <div style="font-size: 12px; color: #64748B;">How did you feel today? (Optional descriptions)</div>
+            st.html(
+                """
+                <div class="ll-panel-head">
+                    <h3>💭 Personal Reflections</h3>
+                    <span>How did you feel today? (Optional descriptions)</span>
                 </div>
-            ''', unsafe_allow_html=True)
+                """
+            )
 
             r_row1_col1, r_row1_col2 = st.columns(2, gap="medium")
             with r_row1_col1:
@@ -452,12 +583,14 @@ if selected_tab == "📝 Daily Check-in":
 
         # CARD 3 — OPTIONAL REFLECTION
         with st.container(key="optional_reflection_panel"):
-            st.markdown('''
-                <div style="margin-top: 4px; margin-bottom: 4px;">
-                    <div style="font-size: 13px; font-weight: 600; color: #334155;">💭 What influenced your day?</div>
-                    <div style="font-size: 11px; color: #64748B;">Optional reflection · Add context that numbers and ratings cannot capture.</div>
+            st.html(
+                """
+                <div class="ll-panel-head">
+                    <h3>📝 What influenced your day?</h3>
+                    <span>Optional · add context that numbers and ratings cannot capture.</span>
                 </div>
-            ''', unsafe_allow_html=True)
+                """
+            )
 
             daily_note = st.text_area(
                 "What influenced your day?",
@@ -559,118 +692,148 @@ if selected_tab == "📝 Daily Check-in":
     with st.expander("View Raw Data"):
         st.dataframe(data, use_container_width=True, hide_index=False)
 
-
-    
-    
 if selected_tab == "🏠 Dashboard":
 
     if data.empty:
-        st.markdown("## 🌱 Welcome to LifeLens")
-        st.markdown(
-            "Your personal wellness journey starts with your first check-in."
-        )
-        st.info(
-            "📋 No check-in data has been recorded yet. "
-            "Go to **📝 Daily Check-in** and complete your first entry "
-            "to unlock your personalised dashboard."
+        st.html(
+            """
+            <div class="ll-empty">
+                <span class="ll-empty-icon">🌱</span>
+                <b style="color:#F4F2FF;font-size:1.1rem;">Welcome to LifeLens</b><br>
+                Your personal wellness journey starts with your first check-in.<br>
+                Go to <b>📝 Daily Check-in</b> and complete your first entry
+                to unlock your personalised dashboard.
+            </div>
+            """
         )
         st.stop()
 
     # ==========================================
-    # 1. COMPACT DASHBOARD HEADER
+    # 1. HERO — TODAY'S WELLNESS SCORE
+    # (value + category come straight from calculate_wellness_score)
     # ==========================================
-    st.markdown(
-        """
-        <div style="margin-bottom: 16px;">
-            <div style="font-size: 24px; font-weight: 800; color: #0F172A; letter-spacing: -0.025em; line-height: 1.2;">
-                Your Wellness Snapshot
+    score_display = f"{round(wellness_score)}" if wellness_score is not None else "--"
+    cat_display = wellness_category if wellness_score is not None else "Insufficient Data"
+    cat_class = (
+        _CATEGORY_CLASS.get(wellness_category, "ll-cat-none")
+        if wellness_score is not None else "ll-cat-none"
+    )
+    ring_pct = max(0.0, min(100.0, float(wellness_score))) if wellness_score is not None else 0.0
+
+    st.html(
+        f"""
+        <div class="ll-hero {cat_class}">
+            <div class="ll-hero-label">Today's Wellness</div>
+            <div class="ll-ring" style="--p:{ring_pct:.1f}">
+                <div class="ll-ring-inner">
+                    <div class="ll-ring-score">{score_display}</div>
+                    <span class="ll-ring-max">/ 100</span>
+                </div>
             </div>
-            <div style="font-size: 13.5px; color: #64748B; margin-top: 2px;">
-                Here's how you're doing today.
-            </div>
+            <div class="ll-hero-cat">{_esc(cat_display)}</div>
+            <div class="ll-hero-foot">Based on {available_factors} of 7 recorded factors</div>
         </div>
-        """,
-        unsafe_allow_html=True
+        """
     )
 
     # ==========================================
-    # 2 & 3. COMMAND CENTRE HERO CARDS
-    # Today's Wellness Score (Strongest) + Tomorrow's Forecast (Second)
+    # 2. METRIC CARDS (real values from the latest check-in;
+    #    status + bar come from the existing get_score_breakdown)
     # ==========================================
-    col_today, col_tomorrow = st.columns([1.18, 1], gap="medium")
+    ll_section("📊", "Today's Signals", "From your latest check-in")
 
-    with col_today:
-        score_display = f"{round(wellness_score)}" if wellness_score is not None else "--"
-        cat_display = wellness_category if wellness_score is not None else "Insufficient Data"
-        
-        if wellness_score is not None:
-            if wellness_score >= 80:
-                score_msg = "Outstanding balance across sleep, habits, and mindset."
-                badge_bg = "#DCFCE7"
-                badge_text = "#15803D"
-            elif wellness_score >= 65:
-                score_msg = "Solid overall wellbeing with steady daily rhythm."
-                badge_bg = "#DBEAFE"
-                badge_text = "#1D4ED8"
-            elif wellness_score >= 50:
-                score_msg = "Moderate balance with room for targeted improvements."
-                badge_bg = "#FEF3C7"
-                badge_text = "#B45309"
-            else:
-                score_msg = "Key areas need attention to help you recover energy."
-                badge_bg = "#FEE2E2"
-                badge_text = "#B91C1C"
-        else:
-            score_msg = "Add your daily check-in to generate your wellness score."
-            badge_bg = "#F1F5F9"
-            badge_text = "#475569"
+    breakdown_lookup = {name: (score, status) for name, score, status in score_breakdown}
+    previous = data.iloc[-2] if len(data) >= 2 else None
 
-        st.html(
+    metric_specs = [
+        # label, column, icon, unit, decimals, key in score_breakdown
+        ("Sleep", "SleepHours", "😴", "hrs", 1, "Sleep"),
+        ("Mood", "Mood", "😊", "/ 10", 0, "Mood"),
+        ("Energy", "Energy", "⚡", "/ 10", 0, "Energy"),
+        ("Productivity", "Productivity", "🎯", "/ 10", 0, "Productivity"),
+        ("Stress", "Stress", "😌", "/ 10", 0, "Stress"),
+        ("Screen Time", "ScreenTime", "💻", "hrs", 1, "Screen Time"),
+        ("Exercise", "ExerciseMinutes", "🏃", "min", 0, "Exercise"),
+        ("Study / Work", "StudyHours", "📚", "hrs", 1, None),
+    ]
+
+    metric_cards = []
+    for label, column, icon, unit, decimals, bd_key in metric_specs:
+        current_value = latest.get(column)
+        shown = _fmt_num(current_value, decimals)
+        value_html = (
+            f'{_esc(shown)}<small>{_esc(unit)}</small>' if shown is not None else "--"
+        )
+
+        score_pct, status_text = breakdown_lookup.get(bd_key, (None, None)) if bd_key else (None, None)
+        tone = _STATUS_TONE.get(status_text, "none")
+
+        delta_html = ""
+        if previous is not None:
+            cur_n = _valid_number(current_value)
+            prev_n = _valid_number(previous.get(column))
+            if cur_n is not None and prev_n is not None:
+                diff = cur_n - prev_n
+                if abs(diff) < 0.05:
+                    delta_html = "→ same as last"
+                else:
+                    arrow = "↑" if diff > 0 else "↓"
+                    delta_html = f"{arrow} {_esc(_fmt_num(abs(diff), decimals) or '0')} vs last"
+
+        status_html = f'<span class="ll-status">{_esc(status_text)}</span>' if status_text else "<span></span>"
+        bar_html = ""
+        if score_pct is not None:
+            bar_html = f'<div class="ll-bar"><span style="width:{max(4, min(100, float(score_pct))):.0f}%"></span></div>'
+
+        metric_cards.append(
             f"""
-            <div style="
-                background: linear-gradient(135deg, #0F172A 0%, #1E293B 55%, #1E3A8A 100%);
-                border: 1px solid #334155;
-                border-radius: 14px;
-                padding: 22px 24px;
-                color: #FFFFFF;
-                min-height: 220px;
-                box-shadow: 0 4px 18px rgba(15, 23, 42, 0.12);
-                display: flex;
-                flex-direction: column;
-                justify-content: space-between;
-                box-sizing: border-box;
-            ">
-                <div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #94A3B8;">
-                            🌱 Today's Wellness
-                        </span>
-                        <span style="background: {badge_bg}; color: {badge_text}; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 700; letter-spacing: 0.01em;">
-                            {cat_display}
-                        </span>
-                    </div>
-                    <div style="display: flex; align-items: baseline; gap: 4px; margin-bottom: 6px;">
-                        <span style="font-size: 48px; font-weight: 800; line-height: 1; color: #F8FAFC; letter-spacing: -0.03em;">
-                            {score_display}
-                        </span>
-                        <span style="font-size: 20px; font-weight: 600; color: #64748B;">
-                            /100
-                        </span>
-                    </div>
+            <div class="ll-metric ll-tone-{tone}">
+                <div class="ll-metric-top">
+                    <div class="ll-metric-name"><span class="ll-metric-icon">{icon}</span>{_esc(label)}</div>
                 </div>
-                <div>
-                    <div style="font-size: 13.5px; color: #CBD5E1; line-height: 1.45; font-weight: 450;">
-                        {score_msg}
-                    </div>
-                    <div style="font-size: 12px; color: #94A3B8; margin-top: 5px;">
-                        Based on {available_factors} of 7 recorded factors
-                    </div>
-                </div>
+                <div class="ll-metric-value">{value_html}</div>
+                <div class="ll-metric-meta">{status_html}<span class="ll-delta">{delta_html}</span></div>
+                {bar_html}
             </div>
             """
         )
 
-    with col_tomorrow:
+    st.html(f'<div class="ll-metrics">{"".join(metric_cards)}</div>')
+
+    # ==========================================
+    # 3. AI INSIGHT  +  TOMORROW'S FORECAST
+    # ==========================================
+    st.html('<div style="height: 1.6rem;"></div>')
+    col_insight, col_forecast = st.columns([1.15, 1], gap="medium")
+
+    with col_insight:
+        if nlp_wellness_report:
+            report_sections = ll_parse_report(nlp_wellness_report)
+            if report_sections:
+                report_items = "".join(
+                    f'<div class="ll-report-item"><div class="ll-report-head">{_esc(head)}</div>'
+                    f'<div class="ll-report-text">{_esc(body)}</div></div>'
+                    for head, body in report_sections
+                )
+                report_html = f'<div class="ll-report">{report_items}</div>'
+            else:
+                report_html = f'<div class="ll-report-raw">{_esc(str(nlp_wellness_report).strip())}</div>'
+        else:
+            report_html = (
+                '<div class="ll-report-raw" style="color:#A9A5CE;">'
+                'The AI Wellness Report is temporarily unavailable.</div>'
+            )
+
+        st.html(
+            f"""
+            <div class="ll-card">
+                <div class="ll-card-label"><span>🧠 AI Wellness Insight</span><span class="ll-chip">AI generated</span></div>
+                {report_html}
+            </div>
+            """
+        )
+
+    with col_forecast:
         if prediction:
             forecast_summary = generate_forecast_summary(prediction)
             t_score, t_cat = calculate_wellness_score(
@@ -683,159 +846,58 @@ if selected_tab == "🏠 Dashboard":
                 prediction.get("Productivity"),
             )
             t_score_str = f"{round(t_score)}" if t_score is not None else "--"
-            
-            p_sleep = (
-                f"{prediction['SleepHours']}h"
-                if prediction.get("SleepHours") is not None
-                else "--"
-            )
 
-            p_mood = (
-                f"{prediction['Mood']}/10"
-                if prediction.get("Mood") is not None
-                else "--"
-            )
+            forecast_facts = []
+            if _forecast_facts is not None:
+                try:
+                    forecast_facts = _forecast_facts(prediction, latest)
+                except Exception as error:
+                    print("Forecast direction facts unavailable:", repr(error))
 
-            p_stress = (
-                f"{prediction['Stress']}/10"
-                if prediction.get("Stress") is not None
-                else "--"
-            )
-
-            p_screen = (
-                f"{prediction['ScreenTime']}h"
-                if prediction.get("ScreenTime") is not None
-                else "--"
-            )
-
-            p_energy = (
-                f"{prediction['Energy']}/10"
-                if prediction.get("Energy") is not None
-                else "--"
-            )
-
-            p_exercise = (
-                f"{prediction['ExerciseMinutes']} min"
-                if prediction.get("ExerciseMinutes") is not None
-                else "--"
-            )
-
-            p_productivity = (
-                f"{prediction['Productivity']}/10"
-                if prediction.get("Productivity") is not None
-                else "--"
-            )
+            forecast_rows = []
+            for fact in forecast_facts:
+                predicted_txt = _fmt_num(fact["predicted"], 1)
+                if predicted_txt is None:
+                    continue
+                unit = _FORECAST_UNITS.get(fact["metric"], "")
+                change_type = fact.get("change_type")
+                status = fact.get("status")
+                arrow = {"increase": "↑", "decrease": "↓", "same": "→"}.get(change_type, "–")
+                arrow_cls = (
+                    "good" if status == "improving"
+                    else "bad" if status in ("worsening", "declining")
+                    else "flat"
+                )
+                forecast_rows.append(
+                    f'<div class="ll-row"><span class="ll-row-name">{_esc(fact["name"])}</span>'
+                    f'<span class="ll-row-val">{_esc(predicted_txt)}{_esc(unit)}</span>'
+                    f'<span class="ll-arrow {arrow_cls}">{arrow}</span></div>'
+                )
 
             st.html(
                 f"""
-                <div style="
-                    background: linear-gradient(135deg, #1E1B4B 0%, #312E81 50%, #4338CA 100%);
-                    border: 1px solid #4338CA;
-                    border-radius: 14px;
-                    padding: 22px 24px;
-                    color: #FFFFFF;
-                    min-height: 220px;
-                    box-shadow: 0 4px 18px rgba(67, 56, 202, 0.12);
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: space-between;
-                    box-sizing: border-box;
-                ">
-                    <div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                            <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #C7D2FE;">
-                                🔮 Tomorrow's Forecast
-                            </span>
-                            <span style="background: rgba(255, 255, 255, 0.14); color: #EEF2FF; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600;">
-                                {forecast_summary}
-                            </span>
-                        </div>
-                        <div style="display: flex; align-items: baseline; gap: 5px; margin-bottom: 2px;">
-                            <span style="font-size: 38px; font-weight: 800; line-height: 1; color: #FFFFFF; letter-spacing: -0.02em;">
-                                {t_score_str}
-                            </span>
-                            <span style="font-size: 16px; font-weight: 600; color: #A5B4FC;">
-                                /100 projected
-                            </span>
-                        </div>
-                        <div style="font-size: 12.5px; font-weight: 700; color: #C7D2FE; margin-bottom: 6px;">
-                            {t_cat}
-                        </div>
-                        <div style="font-size: 13px; color: #E0E7FF; line-height: 1.4; font-weight: 450;">
-                            AI projection based on your recent behavioural momentum.
-                        </div>
-                    </div>
-                    <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 10px; background: rgba(0, 0, 0, 0.22); padding: 7px 8px; border-radius: 9px;">
-                        <div style="text-align: center;">
-                            <div style="font-size: 11px; color: #C7D2FE;">Sleep</div>
-                            <div style="font-size: 13px; font-weight: 700; color: #FFFFFF;">{p_sleep}</div>
-                        </div>
-
-                        <div style="text-align: center;">
-                            <div style="font-size: 11px; color: #C7D2FE;">Mood</div>
-                            <div style="font-size: 13px; font-weight: 700; color: #FFFFFF;">{p_mood}</div>
-                        </div>
-
-                        <div style="text-align: center;">
-                            <div style="font-size: 11px; color: #C7D2FE;">Stress</div>
-                            <div style="font-size: 13px; font-weight: 700; color: #FFFFFF;">{p_stress}</div>
-                        </div>
-
-                        <div style="text-align: center;">
-                            <div style="font-size: 11px; color: #C7D2FE;">Energy</div>
-                            <div style="font-size: 13px; font-weight: 700; color: #FFFFFF;">{p_energy}</div>
-                        </div>
-
-                        <div style="text-align: center;">
-                            <div style="font-size: 11px; color: #C7D2FE;">Exercise</div>
-                            <div style="font-size: 13px; font-weight: 700; color: #FFFFFF;">{p_exercise}</div>
-                        </div>
-
-                        <div style="text-align: center;">
-                            <div style="font-size: 11px; color: #C7D2FE;">Screen</div>
-                            <div style="font-size: 13px; font-weight: 700; color: #FFFFFF;">{p_screen}</div>
-                        </div>
-
-                        <div style="text-align: center;">
-                            <div style="font-size: 11px; color: #C7D2FE;">Productivity</div>
-                            <div style="font-size: 13px; font-weight: 700; color: #FFFFFF;">{p_productivity}</div>
-                        </div>
-                    </div>
+                <div class="ll-card">
+                    <div class="ll-card-label"><span>🔮 Tomorrow's Forecast</span>
+                        <span class="ll-chip">{_esc(forecast_summary)}</span></div>
+                    <div class="ll-forecast-score"><b>{t_score_str}</b><span>/ 100 predicted</span></div>
+                    <div class="ll-forecast-cat">{_esc(t_cat)}</div>
+                    <div class="ll-rows">{"".join(forecast_rows)}</div>
                 </div>
                 """
             )
         else:
             st.html(
                 """
-                <div style="
-                    background: #F8FAFC;
-                    border: 1px dashed #CBD5E1;
-                    border-radius: 14px;
-                    padding: 22px 24px;
-                    min-height: 220px;
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: center;
-                    align-items: center;
-                    text-align: center;
-                    box-sizing: border-box;
-                ">
-                    <div style="font-size: 28px; margin-bottom: 6px;">🔮</div>
-                    <div style="font-size: 15px; font-weight: 700; color: #1E293B; margin-bottom: 3px;">
-                        Tomorrow's Forecast
-                    </div>
-                    <div style="font-size: 13px; color: #64748B; max-width: 270px; line-height: 1.45;">
-                        Log check-ins for a few consecutive days to unlock your AI predictive forecast.
-                    </div>
+                <div class="ll-empty">
+                    <span class="ll-empty-icon">🔮</span>
+                    <b style="color:#F4F2FF;">Tomorrow's Forecast</b><br>
+                    Log check-ins for a few consecutive days to unlock your AI forecast.
                 </div>
                 """
             )
 
-    # ==========================================
-    # 🔮 TOMORROW FORECAST AI EXPLANATION
-    # ==========================================
+    # Forecast explanation (existing explain_tomorrow_forecast output)
     if prediction and forecast_explanation:
-        # Robust multi-key lookup with safe fallbacks
         outlook_text = (
             forecast_explanation.get("Tomorrow Outlook")
             or forecast_explanation.get("outlook")
@@ -863,172 +925,123 @@ if selected_tab == "🏠 Dashboard":
 
         st.html(
             f"""
-            <div style="
-                background: #FFFFFF;
-                border: 1px solid #E2E8F0;
-                border-left: 4px solid #6366F1;
-                border-radius: 12px;
-                padding: 16px 20px;
-                margin-top: 14px;
-                margin-bottom: 14px;
-                box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-            ">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                    <span style="font-size: 16px;">🔮</span>
-                    <span style="font-size: 14px; font-weight: 700; color: #1E293B; letter-spacing: -0.01em;">
-                        Tomorrow Forecast Analysis
-                    </span>
-                    <span style="font-size: 11px; background: #EEF2FF; color: #4F46E5; padding: 2px 8px; border-radius: 999px; font-weight: 600;">
-                        AI Explained
-                    </span>
-                </div>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;">
-                    <div style="background: #F8FAFC; padding: 12px 14px; border-radius: 8px; border: 1px solid #F1F5F9;">
-                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #4F46E5; margin-bottom: 4px;">
-                            Tomorrow Outlook
-                        </div>
-                        <div style="font-size: 13px; color: #334155; line-height: 1.45;">
-                            {outlook_text}
-                        </div>
-                    </div>
-                    <div style="background: #F8FAFC; padding: 12px 14px; border-radius: 8px; border: 1px solid #F1F5F9;">
-                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #0284C7; margin-bottom: 4px;">
-                            Main Factor
-                        </div>
-                        <div style="font-size: 13px; color: #334155; line-height: 1.45;">
-                            {factor_text}
-                        </div>
-                    </div>
-                    <div style="background: #F8FAFC; padding: 12px 14px; border-radius: 8px; border: 1px solid #F1F5F9;">
-                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #D97706; margin-bottom: 4px;">
-                            Pattern
-                        </div>
-                        <div style="font-size: 13px; color: #334155; line-height: 1.45;">
-                            {pattern_text}
-                        </div>
-                    </div>
-                    <div style="background: #F8FAFC; padding: 12px 14px; border-radius: 8px; border: 1px solid #F1F5F9;">
-                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #059669; margin-bottom: 4px;">
-                            Priority
-                        </div>
-                        <div style="font-size: 13px; color: #334155; line-height: 1.45;">
-                            {priority_text}
-                        </div>
-                    </div>
+            <div class="ll-card" style="margin-top: 1.1rem;">
+                <div class="ll-card-label"><span>🔮 Tomorrow Forecast Analysis</span><span class="ll-chip">AI explained</span></div>
+                <div class="ll-grid-4">
+                    <div class="ll-tile"><div class="ll-tile-head">Tomorrow Outlook</div><div class="ll-tile-text">{_esc(outlook_text)}</div></div>
+                    <div class="ll-tile"><div class="ll-tile-head">Main Factor</div><div class="ll-tile-text">{_esc(factor_text)}</div></div>
+                    <div class="ll-tile"><div class="ll-tile-head">Pattern</div><div class="ll-tile-text">{_esc(pattern_text)}</div></div>
+                    <div class="ll-tile"><div class="ll-tile-head">Priority</div><div class="ll-tile-text">{_esc(priority_text)}</div></div>
                 </div>
             </div>
             """
         )
-    else:
-        st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
 
     # ==========================================
-    # 🧠 AI WELLNESS REPORT (NLP Model)
+    # 4. WELLNESS TRENDS (existing charts + existing trend analysis)
     # ==========================================
-    st.markdown(
-        """
-        <div style="font-size: 17px; font-weight: 700; color: #0F172A; letter-spacing: -0.01em; margin-bottom: 2px;">
-            🧠 Your Wellness Report
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-    st.caption("AI-generated narrative summary based on your latest wellness metrics.")
+    ll_section("📈", "Wellness Trends", "Your recent check-in history")
 
-    if nlp_wellness_report:
-        formatted_report = str(nlp_wellness_report).strip()
-        for marker in ["2.", "3.", "4.", "KEY FACTOR", "PATTERN", "PRIORITY"]:
-            formatted_report = re.sub(rf"\s+(?={re.escape(marker)}:?)", "\n\n", formatted_report)
-        st.html(
-            f"""
-            <div style="
-                background: #FFFFFF;
-                border: 1px solid #E2E8F0;
-                border-left: 4px solid #6366F1;
-                border-radius: 12px;
-                padding: 16px 20px;
-                color: #1E293B;
-                box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-                line-height: 1.6;
-                font-size: 14px;
-                white-space: pre-line;
-            ">
-                {formatted_report}
-            </div>
-            """
-        )
-    else:
-        st.info("The AI Wellness Report is temporarily unavailable.")
+    with st.container(key="ll_trends"):
+        trend_sum_col, trend_charts_col = st.columns([1, 1.65], gap="large")
 
-    st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
+        with trend_sum_col:
+            trend_pos = trend_analysis.get("positive", "Keep logging to unlock trend analysis.") if trend_analysis else "Keep logging."
+            trend_watch = trend_analysis.get("watch", "No major changes to monitor.") if trend_analysis else "No data."
+            trend_rec = trend_analysis.get("recommendation", "Maintain routine.") if trend_analysis else "Maintain routine."
 
-    # ==========================================
-    # 4. WELLNESS BREAKDOWN SECTION
-    # ==========================================
-    st.markdown(
-        """
-        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
-            <div style="font-size: 17px; font-weight: 700; color: #0F172A; letter-spacing: -0.01em;">
-                📊 Wellness Breakdown
-            </div>
-            <div style="font-size: 12.5px; color: #64748B;">
-                Current factor status from your latest check-in
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    factor_items = [
-        ("Sleep", f"{latest['SleepHours']} hrs" if _valid_number(latest.get("SleepHours")) is not None else "--", "😴", "#6366F1", "#EEF2FF"),
-        ("Mood", f"{latest['Mood']}/10" if _valid_number(latest.get("Mood")) is not None else "--", "😊", "#F59E0B", "#FEF3C7"),
-        ("Stress", f"{latest['Stress']}/10" if _valid_number(latest.get("Stress")) is not None else "--", "😌", "#EF4444", "#FEE2E2"),
-        ("Energy", f"{latest['Energy']}/10" if _valid_number(latest.get("Energy")) is not None else "--", "⚡", "#10B981", "#D1FAE5"),
-        ("Exercise", f"{int(latest['ExerciseMinutes'])} min" if _valid_number(latest.get("ExerciseMinutes")) is not None else "--", "🏃", "#06B6D4", "#CFFAFE"),
-        ("Screen Time", f"{latest['ScreenTime']} hrs" if _valid_number(latest.get("ScreenTime")) is not None else "--", "💻", "#8B5CF6", "#EDE9FE"),
-    ]
-
-    breakdown_cols = st.columns(6, gap="small")
-    for col, (f_name, f_val, f_icon, f_color, f_bg) in zip(breakdown_cols, factor_items):
-        with col:
             st.html(
                 f"""
-                <div style="
-                    background: #FFFFFF;
-                    border: 1px solid #E2E8F0;
-                    border-radius: 12px;
-                    padding: 12px 10px;
-                    text-align: center;
-                    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-                ">
-                    <div style="
-                        width: 28px;
-                        height: 28px;
-                        border-radius: 7px;
-                        background: {f_bg};
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        margin: 0 auto 5px auto;
-                        font-size: 14px;
-                    ">
-                        {f_icon}
-                    </div>
-                    <div style="font-size: 11px; font-weight: 600; color: #64748B; margin-bottom: 2px;">
-                        {f_name}
-                    </div>
-                    <div style="font-size: 14.5px; font-weight: 750; color: #0F172A;">
-                        {f_val}
-                    </div>
+                <div class="ll-card-label" style="margin-top:6px;"><span>🧠 AI Trend Assessment</span></div>
+                <div class="ll-trend-list">
+                    <div class="ll-trend-item pos"><div class="ll-tile-head" style="color:#34D399;">Positive shift</div><div class="ll-tile-text">{_esc(trend_pos)}</div></div>
+                    <div class="ll-trend-item watch"><div class="ll-tile-head" style="color:#FBBF24;">Area to watch</div><div class="ll-tile-text">{_esc(trend_watch)}</div></div>
+                    <div class="ll-trend-item info"><div class="ll-tile-head" style="color:#60A5FA;">Guidance</div><div class="ll-tile-text">{_esc(trend_rec)}</div></div>
                 </div>
                 """
             )
+
+        with trend_charts_col:
+            with st.container(key="trends_tabs"):
+                sleep_tab, mood_tab, stress_tab, screen_tab = st.tabs([
+                    "😴 Sleep",
+                    "😊 Mood",
+                    "😌 Stress",
+                    "📱 Screen",
+                ])
+                trend_margin = dict(l=10, r=10, t=40, b=20)
+                with sleep_tab:
+                    fig_sleep = ll_style_fig(plot_sleep_trend(data), accent="#A78BFA")
+                    fig_sleep.update_layout(height=260, margin=trend_margin)
+                    st.plotly_chart(fig_sleep, use_container_width=True)
+                with mood_tab:
+                    fig_mood = ll_style_fig(plot_mood_trend(data), accent="#F472B6")
+                    fig_mood.update_layout(height=260, margin=trend_margin)
+                    st.plotly_chart(fig_mood, use_container_width=True)
+                with stress_tab:
+                    fig_stress = ll_style_fig(plot_stress_trend(data), accent="#FB7185")
+                    fig_stress.update_layout(height=260, margin=trend_margin)
+                    st.plotly_chart(fig_stress, use_container_width=True)
+                with screen_tab:
+                    fig_screen = ll_style_fig(plot_screen_time_trend(data), accent="#60A5FA")
+                    fig_screen.update_layout(height=260, margin=trend_margin)
+                    st.plotly_chart(fig_screen, use_container_width=True)
+
+    # ==========================================
+    # 5. TODAY'S FOCUS  +  BIGGEST DISCOVERY
+    # (text comes from get_todays_focus / generate_recommendations /
+    #  generate_ai_forecast_insight / get_biggest_discovery — unchanged)
+    # ==========================================
+    ll_section("🎯", "Focus & Discovery")
+
+    top_recs = [r for r in recommendations if r != today_focus][:3]
+    col_focus, col_discovery = st.columns([1.15, 1], gap="medium")
+
+    with col_focus:
+        checks_html = "".join(
+            f'<div class="ll-check"><i>✓</i><span>{_esc(rec)}</span></div>' for rec in top_recs
+        )
+        supporting_html = (
+            f'<div class="ll-sub-label">Supporting habits</div><div class="ll-checks">{checks_html}</div>'
+            if top_recs else ""
+        )
+        why_html = ""
+        if prediction:
+            why_html = (
+                f'<div class="ll-why"><b>Why this matters</b><br>'
+                f'{_esc(generate_ai_forecast_insight(prediction))}</div>'
+            )
+        st.html(
+            f"""
+            <div class="ll-card">
+                <div class="ll-card-label"><span>🎯 Today's Focus</span></div>
+                <div class="ll-focus-main">{_esc(today_focus)}</div>
+                {supporting_html}
+                {why_html}
+            </div>
+            """
+        )
+
+    with col_discovery:
+        st.html(
+            f"""
+            <div class="ll-card ll-discovery">
+                <div class="ll-card-label"><span>💡 Biggest Discovery</span></div>
+                <div class="ll-discovery-text">{_esc(biggest_discovery)}</div>
+            </div>
+            """
+        )
+
+    # ==========================================
+    # 6. WELLNESS BREAKDOWN (existing radar + strongest / focus areas)
+    # ==========================================
+    ll_section("🧭", "Wellness Breakdown", "Factor scores from your latest check-in")
 
     with st.expander("🔍 View Wellness Radar & Area Breakdown", expanded=False):
         radar_col, areas_col = st.columns([1.3, 1], gap="medium")
         with radar_col:
             st.plotly_chart(
-                radar_chart,
+                ll_style_radar(radar_chart),
                 use_container_width=True,
                 config={"displayModeBar": False}
             )
@@ -1071,263 +1084,10 @@ if selected_tab == "🏠 Dashboard":
             else:
                 st.caption("No factors currently below 60.")
 
-    st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
-
     # ==========================================
-    # 5. TODAY'S BIGGEST DISCOVERY
-    # Dark premium glass-style insight card
+    # 7. HABIT RELATIONSHIPS (unchanged logic)
     # ==========================================
-    st.html(
-        f"""
-        <div style="
-            background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
-            border: 1px solid #334155;
-            border-left: 4px solid #6366F1;
-            border-radius: 12px;
-            padding: 12px 18px;
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            box-shadow: 0 2px 10px rgba(15, 23, 42, 0.12);
-        ">
-            <div style="font-size: 20px; line-height: 1;">💡</div>
-            <div style="flex: 1;">
-                <div style="font-size: 10.5px; font-weight: 750; text-transform: uppercase; letter-spacing: 0.08em; color: #818CF8; margin-bottom: 2px;">
-                    Key Behavioral Discovery
-                </div>
-                <div style="font-size: 13.5px; font-weight: 500; color: #F1F5F9; line-height: 1.4;">
-                    {biggest_discovery}
-                </div>
-            </div>
-        </div>
-        """
-    )
-
-    st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
-
-    # ==========================================
-    # 6. RECOMMENDED ACTION PLAN
-    # Focus -> Why -> What to do
-    # Left: Primary Daily Focus (WHAT) | Right: AI Insight (WHY) + Recommended Action (HOW)
-    # ==========================================
-    st.markdown(
-        """
-        <div style="font-size: 17px; font-weight: 700; color: #0F172A; margin-bottom: 8px; letter-spacing: -0.01em;">
-            🎯 Recommended Action Plan
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    top_recs = [r for r in recommendations if r != today_focus][:3]
-    action_col_today, action_col_prep = st.columns([1.18, 1], gap="medium")
-
-    with action_col_today:
-        supporting_items = "".join([
-            f'<div style="font-size: 12.5px; color: #334155; display: flex; align-items: baseline; gap: 7px; line-height: 1.35;"><span style="color: #059669; font-weight: 700;">✓</span><span>{rec}</span></div>'
-            for rec in top_recs
-        ])
-        st.html(
-            f"""
-            <div style="
-                background: #FFFFFF;
-                border: 1px solid #E2E8F0;
-                border-radius: 12px;
-                padding: 14px 16px;
-                box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-                box-sizing: border-box;
-                display: flex;
-                flex-direction: column;
-                justify-content: space-between;
-                min-height: 154px;
-            ">
-                <div>
-                    <div style="font-size: 10.5px; font-weight: 750; text-transform: uppercase; letter-spacing: 0.08em; color: #059669; margin-bottom: 4px;">
-                        🎯 Primary Daily Focus
-                    </div>
-                    <div style="font-size: 14px; font-weight: 650; color: #0F172A; margin-bottom: 10px; line-height: 1.35;">
-                        {today_focus}
-                    </div>
-                </div>
-                <div>
-                    <div style="font-size: 10.5px; font-weight: 750; text-transform: uppercase; letter-spacing: 0.06em; color: #64748B; margin-bottom: 5px;">
-                        Key Supporting Habits
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 5px;">
-                        {supporting_items}
-                    </div>
-                </div>
-            </div>
-            """
-        )
-
-    with action_col_prep:
-        if prediction:
-            ai_forecast = generate_ai_forecast_insight(prediction)
-            st.html(
-                f"""
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <div style="
-                        background: #F8FAFC;
-                        border: 1px solid #E2E8F0;
-                        border-left: 4px solid #3B82F6;
-                        border-radius: 10px;
-                        padding: 10px 14px;
-                        box-sizing: border-box;
-                    ">
-                        <div style="font-size: 10px; font-weight: 750; text-transform: uppercase; letter-spacing: 0.07em; color: #2563EB; margin-bottom: 2px;">
-                            💡 AI Insight — Why This Matters
-                        </div>
-                        <div style="font-size: 12.5px; color: #334155; line-height: 1.4;">
-                            {ai_forecast}
-                        </div>
-                    </div>
-                    <div style="
-                        background: #F8FAFC;
-                        border: 1px solid #E2E8F0;
-                        border-left: 4px solid #0D9488;
-                        border-radius: 10px;
-                        padding: 10px 14px;
-                        box-sizing: border-box;
-                    ">
-                        <div style="font-size: 10px; font-weight: 750; text-transform: uppercase; letter-spacing: 0.07em; color: #0D9488; margin-bottom: 2px;">
-                            ⚡ Recommended Action — What to Do
-                        </div>
-                        <div style="font-size: 12.5px; color: #334155; line-height: 1.4;">
-                            Reduce screen time before bed while maintaining your current sleep schedule to support tomorrow's energy and recovery.
-                        </div>
-                    </div>
-                </div>
-                """
-            )
-        else:
-            st.html(
-                """
-                <div style="
-                    background: #F8FAFC;
-                    border: 1px dashed #CBD5E1;
-                    border-radius: 12px;
-                    padding: 16px;
-                    min-height: 154px;
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: center;
-                    align-items: center;
-                    text-align: center;
-                    box-sizing: border-box;
-                ">
-                    <div style="font-size: 13.5px; font-weight: 600; color: #475569; margin-bottom: 4px;">
-                        Forward Preparation Guidance
-                    </div>
-                    <div style="font-size: 12px; color: #64748B; max-width: 250px; line-height: 1.4;">
-                        Log consistent check-ins to receive forward-looking preparation guidance.
-                    </div>
-                </div>
-                """
-            )
-
-    st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
-
-    # ==========================================
-    # 7. BEHAVIOUR TRENDS
-    # Compact Balanced Layout + Segmented Tab Control + Sized Charts
-    # ==========================================
-    st.markdown(
-        """
-        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
-            <div style="font-size: 17px; font-weight: 700; color: #0F172A; letter-spacing: -0.01em;">
-                📈 Behaviour Trends
-            </div>
-            <div style="font-size: 12.5px; color: #64748B;">
-                7-day trajectory and habit consistency
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    trend_sum_col, trend_charts_col = st.columns([1, 1.65], gap="medium")
-
-    with trend_sum_col:
-        trend_pos = trend_analysis.get("positive", "Keep logging to unlock trend analysis.") if trend_analysis else "Keep logging."
-        trend_watch = trend_analysis.get("watch", "No major changes to monitor.") if trend_analysis else "No data."
-        trend_risk = trend_analysis.get("risk", "No significant risks detected.") if trend_analysis else "No data."
-        trend_rec = trend_analysis.get("recommendation", "Maintain routine.") if trend_analysis else "Maintain routine."
-
-        st.html(
-            f"""
-            <div style="
-                background: #FFFFFF;
-                border: 1px solid #E2E8F0;
-                border-radius: 12px;
-                padding: 14px 16px;
-                box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-            ">
-                <div style="font-size: 11px; font-weight: 750; color: #1E293B; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em;">
-                    🧠 AI Trend Assessment
-                </div>
-                <div style="display: flex; flex-direction: column; gap: 7px;">
-                    <div style="background: #F0FDF4; border-left: 3px solid #22C55E; padding: 7px 10px; border-radius: 6px;">
-                        <div style="font-size: 10px; font-weight: 750; color: #16A34A; text-transform: uppercase; letter-spacing: 0.04em;">Positive Shift</div>
-                        <div style="font-size: 12px; color: #166534; margin-top: 1px; line-height: 1.35;">{trend_pos}</div>
-                    </div>
-                    <div style="background: #FEF3C7; border-left: 3px solid #F59E0B; padding: 7px 10px; border-radius: 6px;">
-                        <div style="font-size: 10px; font-weight: 750; color: #D97706; text-transform: uppercase; letter-spacing: 0.04em;">Area to Watch</div>
-                        <div style="font-size: 12px; color: #92400E; margin-top: 1px; line-height: 1.35;">{trend_watch}</div>
-                    </div>
-                    <div style="background: #EFF6FF; border-left: 3px solid #3B82F6; padding: 7px 10px; border-radius: 6px;">
-                        <div style="font-size: 10px; font-weight: 750; color: #2563EB; text-transform: uppercase; letter-spacing: 0.04em;">Guidance</div>
-                        <div style="font-size: 12px; color: #1E40AF; margin-top: 1px; line-height: 1.35;">{trend_rec}</div>
-                    </div>
-                </div>
-            </div>
-            """
-        )
-
-    with trend_charts_col:
-        with st.container(key="trends_tabs"):
-            sleep_tab, mood_tab, stress_tab, screen_tab = st.tabs([
-                "😴 Sleep",
-                "😊 Mood",
-                "😌 Stress",
-                "📱 Screen"
-            ])
-            with sleep_tab:
-                fig_sleep = plot_sleep_trend(data)
-                fig_sleep.update_layout(height=245, margin=dict(l=20, r=20, t=35, b=25))
-                st.plotly_chart(fig_sleep, use_container_width=True)
-            with mood_tab:
-                fig_mood = plot_mood_trend(data)
-                fig_mood.update_layout(height=245, margin=dict(l=20, r=20, t=35, b=25))
-                st.plotly_chart(fig_mood, use_container_width=True)
-            with stress_tab:
-                fig_stress = plot_stress_trend(data)
-                fig_stress.update_layout(height=245, margin=dict(l=20, r=20, t=35, b=25))
-                st.plotly_chart(fig_stress, use_container_width=True)
-            with screen_tab:
-                fig_screen = plot_screen_time_trend(data)
-                fig_screen.update_layout(height=245, margin=dict(l=20, r=20, t=35, b=25))
-                st.plotly_chart(fig_screen, use_container_width=True)
-
-    st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
-
-    # ==========================================
-    # 8. HABIT RELATIONSHIPS
-    # Connection Cards + Advanced Heatmap Expander
-    # ==========================================
-    st.markdown(
-        """
-        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
-            <div style="font-size: 17px; font-weight: 700; color: #0F172A; letter-spacing: -0.01em;">
-                🧩 Habit Relationships
-            </div>
-            <div style="font-size: 12.5px; color: #64748B;">
-                Key connections discovered across your recorded check-ins
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    ll_section("🧩", "Habit Relationships", "Key connections across your check-ins")
 
     insights = generate_correlation_insights(correlation_matrix)
     positive = insights["positive"] if insights else None
@@ -1349,8 +1109,8 @@ if selected_tab == "🏠 Dashboard":
         if positive is not None:
             show_correlation_card(
                 title="Strongest Positive Connection",
-                title_color="#059669",
-                progress_color="#22C55E",
+                title_color="#34D399",
+                progress_color="#34D399",
                 icon="🟢",
                 correlation=positive,
                 explanation=positive_explanation,
@@ -1362,8 +1122,8 @@ if selected_tab == "🏠 Dashboard":
         if negative is not None:
             show_correlation_card(
                 title="Strongest Negative Connection",
-                title_color="#DC2626",
-                progress_color="#EF4444",
+                title_color="#FB7185",
+                progress_color="#FB7185",
                 icon="🔴",
                 correlation=negative,
                 explanation=negative_explanation,
@@ -1379,7 +1139,10 @@ if selected_tab == "🏠 Dashboard":
                 "negative values indicate habits that tend to move in opposite directions. "
                 "Correlation does not necessarily mean one habit causes another."
             )
-            st.plotly_chart(plot_correlation_heatmap(correlation_matrix), use_container_width=True)
+            st.plotly_chart(
+                ll_style_fig(plot_correlation_heatmap(correlation_matrix)),
+                use_container_width=True,
+            )
         else:
             st.info(
                 "Not enough valid variation in your check-in data to display "
@@ -1387,30 +1150,38 @@ if selected_tab == "🏠 Dashboard":
                 "varied values to reveal relationships."
             )
 
-
+    # ==========================================
+    # 8. WEEKLY AI ANALYSIS (same parsing rules as before)
+    # ==========================================
     if weekly_ai_analysis:
-        st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
-        st.markdown("## 🧠 Weekly AI Analysis")
+        ll_section("🗓️", "Weekly AI Analysis")
 
-        sections = weekly_ai_analysis.split("\n")
-
-        for line in sections:
+        weekly_sections = []  # [[title, [lines]], ...]
+        for line in weekly_ai_analysis.split("\n"):
             line = line.strip()
 
             if not line:
                 continue
 
             if line.startswith("WEEKLY OVERVIEW") or "WEEKLY SUMMARY" in line:
-                st.markdown("### 📊 Weekly Overview")
+                weekly_sections.append(["📊 Weekly Overview", []])
             elif line.startswith("KEY TREND") or "METRIC COMPARISONS" in line:
-                st.markdown("### 📈 Key Trend")
+                weekly_sections.append(["📈 Key Trend", []])
             elif line.startswith("MAIN FACTOR") or "ROUTINE CHANGES" in line:
-                st.markdown("### 🎯 Main Factor")
+                weekly_sections.append(["🎯 Main Factor", []])
             elif line.startswith("NEXT WEEK PRIORITY") or "NEXT WEEK" in line:
-                st.markdown("### 🚀 Next Week Priority")
+                weekly_sections.append(["🚀 Next Week Priority", []])
             else:
-                st.write(line)
+                if not weekly_sections:
+                    weekly_sections.append(["📊 Weekly Overview", []])
+                weekly_sections[-1][1].append(line)
 
+        weekly_tiles = "".join(
+            f'<div class="ll-tile"><div class="ll-tile-head">{_esc(title)}</div>'
+            f'<div class="ll-tile-text">{"<br>".join(_esc(l) for l in lines)}</div></div>'
+            for title, lines in weekly_sections
+        )
+        st.html(f'<div class="ll-card"><div class="ll-grid-4">{weekly_tiles}</div></div>')
 
 if selected_tab == "📊 Reports":
     show_reports(monthly_report)

@@ -1,2196 +1,1253 @@
-.main {
-        padding-top: 1rem;
-    }
+/* ==========================================================================
+   LIFELENS — PREMIUM DARK THEME  (append to the END of assets/style.css)
+   Loaded last on purpose: it overrides the older light-theme rules above
+   without deleting them, so the ui/*.py modules keep their class names.
+   ========================================================================== */
 
-    div[data-testid="stMetric"] {
-        background-color: #f8f9fa;
-        border-radius: 12px;
-        padding: 15px;
-        border: 1px solid #e6e6e6;
-    }
+:root {
+    --ll-bg: #0A0A18;
+    --ll-bg-2: #11112B;
+    --ll-surface: rgba(255, 255, 255, 0.045);
+    --ll-surface-2: rgba(255, 255, 255, 0.075);
+    --ll-border: rgba(255, 255, 255, 0.09);
+    --ll-border-strong: rgba(255, 255, 255, 0.16);
 
-    div[data-testid="stAlert"] {
-        border-radius: 12px;
-    }
+    --ll-text: #F4F2FF;
+    --ll-muted: #A9A5CE;
+    --ll-faint: #7D79A6;
 
-.stButton>button {
-        border-radius: 10px;
-    }
+    --ll-purple: #8B5CF6;
+    --ll-violet: #A78BFA;
+    --ll-pink: #EC4899;
+    --ll-good: #34D399;
+    --ll-warn: #FBBF24;
+    --ll-bad: #FB7185;
+    --ll-info: #60A5FA;
 
-/* LifeLens hero header */
-
-/* Compact LifeLens brand header */
-.hero-card {
-    background: linear-gradient(135deg, #0F172A, #1E3A8A);
-    padding: 22px 30px;
-    border-radius: 18px;
-    color: white;
-    margin-bottom: 12px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16);
+    --ll-radius: 20px;
+    --ll-radius-sm: 14px;
+    --ll-gap: 1.1rem;
+    --ll-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+    --ll-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
 }
 
-.hero-title {
-    margin: 0 0 5px 0;
-    font-size: 34px;
-    line-height: 1.25;
-    font-weight: 750;
-    color: white;
+/* ---------- App shell ---------- */
+.stApp {
+    background:
+        radial-gradient(900px 520px at 12% -8%, rgba(139, 92, 246, 0.20), transparent 60%),
+        radial-gradient(800px 480px at 95% 0%, rgba(236, 72, 153, 0.13), transparent 60%),
+        var(--ll-bg) !important;
+    color: var(--ll-text);
+    font-family: var(--ll-font);
 }
 
-.hero-subtitle {
-    margin: 0;
-    color: #CBD5E1;
-    font-size: 15px;
-    line-height: 1.5;
+.stApp header[data-testid="stHeader"] {
+    background: transparent !important;
 }
 
-.hero-welcome {
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
-    padding-top: 12px;
+.stApp footer,
+.stApp #MainMenu {
+    visibility: hidden;
 }
 
-.hero-greeting {
-    margin: 0;
-    font-size: 24px;
-    color: white;
+.stApp .block-container {
+    max-width: 1180px !important;
+    padding-top: 1.6rem !important;
+    padding-bottom: 4rem !important;
 }
 
-.hero-description {
-    font-size: 17px;
-    margin: 8px 0;
-    color: white;
+.stApp h1,
+.stApp h2,
+.stApp h3,
+.stApp h4,
+.stApp h5 {
+    color: var(--ll-text) !important;
+    font-family: var(--ll-font);
+    letter-spacing: -0.015em;
 }
 
-.hero-date {
-    font-size: 15px;
-    color: #CBD5E1;
-    margin: 0;
+.stApp p,
+.stApp li,
+.stApp label {
+    color: var(--ll-text);
 }
 
-
-.discovery-card {
-    background: #FFFFFF;
-    border-left: 5px solid #2563EB;
-    border-radius: 14px;
-    padding: 22px 26px;
-    margin-top: 8px;
-    margin-bottom: 18px;
-    box-shadow: 0 3px 14px rgba(15, 23, 42, 0.06);
+.stApp [data-testid="stCaptionContainer"],
+.stApp .stCaption {
+    color: var(--ll-muted) !important;
 }
 
-.discovery-title {
-    margin-top: 0;
-    margin-bottom: 12px;
-    color: #1E3A8A;
-    font-size: 25px;
-    font-weight: 700;
-    line-height: 1.35;
+.stApp hr {
+    border-color: var(--ll-border) !important;
 }
 
-.discovery-text {
-    font-size: 18px;
-    color: #334155;
-    line-height: 1.65;
-    margin-top: 0;
-    margin-bottom: 0;
+.stApp a {
+    color: var(--ll-violet);
 }
 
-.action-card{
-    padding:18px;
-    border-radius:12px;
-    background:#F8FAFC;
-    border-left:6px solid #2563EB;
-    margin-bottom:20px;
-}
-
-.action-title{
-    margin:0;
-    color:#2563EB;
-}
-
-.action-text{
-    font-size:18px;
-    margin-top:12px;
-    margin-bottom:0;
-}
-.insight-card{
-    background:white;
-    padding:18px;
-    border-radius:16px;
-    border-left:6px solid;
-    box-shadow:0 2px 10px rgba(0,0,0,.06);
-    margin-bottom:18px;
-}
-
-.insight-title{
-    font-size:20px;
-    font-weight:700;
-    margin-bottom:8px;
-}
-
-.insight-message{
-    font-size:15px;
-    color:#475569;
-    line-height:1.6;
-    margin-bottom:14px;
-}
-
-.insight-badge{
-    padding:6px 12px;
-    border-radius:999px;
-    font-size:13px;
-    font-weight:600;
-    display:inline-block;
-}
-
-/* Behaviour Summary — Metric Cards */
-.stat-card {
-    background: #FFFFFF;
-    padding: 22px;
-    border-radius: 15px;
-    border: 1px solid #E2E8F0;
-    box-shadow: 0 3px 12px rgba(15, 23, 42, 0.05);
-    height: 170px;
+/* ---------- Header ---------- */
+.ll-header {
     display: flex;
-    flex-direction: column;
+    align-items: center;
     justify-content: space-between;
-    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding: 4px 2px 22px;
 }
 
-
-.stat-header {
+.ll-brand {
     display: flex;
     align-items: center;
     gap: 14px;
 }
 
-.stat-icon {
-    width: 42px;
-    height: 42px;
-    min-width: 42px;
-    flex: 0 0 42px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
-    line-height: 1;
-}
-
-.stat-title {
-    font-size: 15px;
-    font-weight: 650;
-    color: #334155;
-}
-
-.stat-value {
-    font-size: 42px;
-    font-weight: 750;
-    color: #172554;
-    line-height: 1.1;
-    margin-top: 8px;
-}
-
-.stat-subtitle {
-    font-size: 13px;
-    color: #64748B;
-    line-height: 1.4;
-}
-
-
-.forecast-card{
-    background:linear-gradient(135deg,#ECFDF5,#F0FDF4);
-    padding:28px;
-    border-radius:20px;
-    border:1px solid #BBF7D0;
-    margin-bottom:25px;
-    box-shadow:0 4px 18px rgba(0,0,0,.06);
-}
-
-.forecast-label{
-    font-size:14px;
-    font-weight:600;
-    color:#059669;
-    letter-spacing:1px;
-    text-transform:uppercase;
-    margin-bottom:10px;
-}
-
-.forecast-title{
-    font-size:30px;
-    font-weight:700;
-    color:#065F46;
-    margin-bottom:12px;
-}
-
-.forecast-description{
-    font-size:16px;
-    color:#374151;
-    line-height:1.7;
-}
-
-
-.ai-insight-label{
-    font-size:13px;
-    font-weight:700;
-    letter-spacing:1px;
-    text-transform:uppercase;
-    color:#2563EB;
-    margin-bottom:12px;
-}
-
-.ai-insight-text{
-    font-size:17px;
-    line-height:1.8;
-    color:#1F2937;
-}
-.best-action-card{
-    background:#F9FAFB;
-    padding:22px;
-    border-radius:18px;
-    border-left:6px solid #10B981;
-    box-shadow:0 3px 12px rgba(0,0,0,.05);
-}
-
-.best-action-label{
-    font-size:13px;
-    font-weight:700;
-    letter-spacing:1px;
-    text-transform:uppercase;
-    color:#10B981;
-    margin-bottom:12px;
-}
-
-.best-action-text{
-    font-size:17px;
-    line-height:1.8;
-    color:#1F2937;
-}
-
-/* AI Relationship Insight Cards */
-.correlation-card {
-    background: #F8FAFC;
-    padding: 24px;
-    border-radius: 16px;
-    border: 1px solid #E2E8F0;
-    min-height: 260px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    box-shadow: 0 3px 12px rgba(15, 23, 42, 0.04);
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
-}
-
-.correlation-card:hover {
-    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
-    transform: translateY(-2px);
-}
-
-.correlation-title {
-    font-size: 17px;
-    font-weight: 700;
-    margin-bottom: 16px;
-}
-
-.correlation-features {
-    font-size: 21px;
-    font-weight: 700;
-    color: #1E293B;
-    margin-bottom: 8px;
-}
-
-.correlation-bar {
-    background: #E2E8F0;
-    height: 9px;
-    border-radius: 999px;
-    overflow: hidden;
-    margin: 14px 0;
-}
-
-.correlation-progress {
-    height: 100%;
-    border-radius: 999px;
-}
-
-.correlation-strength {
-    font-size: 17px;
-    font-weight: 700;
-    margin-bottom: 16px;
-}
-
-.correlation-text {
-    font-size: 14px;
-    line-height: 1.7;
-    color: #475569;
-}
-
-/* Weekly Snapshot */
-
-.weekly-card {
-    background: white;
-    padding: 22px;
-    border-radius: 18px;
-    border: 1px solid #E5E7EB;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
-    margin-bottom: 22px;
-}
-
-.weekly-label {
-    font-size: 13px;
-    font-weight: 700;
-    color: #6366F1;
-    letter-spacing: 0.7px;
-    text-transform: uppercase;
-    margin-bottom: 14px;
-}
-
-.weekly-headline {
-    font-size: 24px;
-    font-weight: 700;
-    color: #1F2937;
-    margin-bottom: 18px;
-}
-
-.weekly-grid {
+.ll-brand-mark {
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 14px;
-    margin-bottom: 18px;
+    place-items: center;
+    font-size: 24px;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.35), rgba(236, 72, 153, 0.30));
+    border: 1px solid var(--ll-border-strong);
+    box-shadow: 0 0 28px rgba(139, 92, 246, 0.35);
 }
 
-.weekly-stat {
-    background: white;
-    padding: 16px;
-    border-radius: 14px;
-    border: 1px solid #E5E7EB;
-    text-align: center;
-}
-
-.weekly-stat-title {
-    font-size: 15px;
-    font-weight: 700;
-    color: #374151;
-    margin-bottom: 9px;
-}
-
-.weekly-stat-value {
-    font-size: 21px;
+.ll-brand-name {
+    font-size: 1.65rem;
     font-weight: 800;
-}
-.sleep-good{
-    color:#16A34A;
-}
-
-.mood-stable{
-    color:#2563EB;
-}
-
-.stress-high{
-    color:#F59E0B;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    background: linear-gradient(90deg, #FFFFFF 0%, #C4B5FD 60%, #F9A8D4 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
 }
 
-.energy-low{
-    color:#DC2626;
+.ll-brand-tag {
+    color: var(--ll-muted);
+    font-size: 0.92rem;
+    margin-top: 2px;
 }
 
-.weekly-takeaway{
-    padding:16px;
-    background:#EEF6FF;
-    border-left:5px solid #3B82F6;
-    border-radius:12px;
-    font-size:16px;
-    color:#374151;
-}
-.monthly-score-card {
-    background: linear-gradient(135deg, #F8FAFC, #FFFFFF);
-    padding: 18px 22px;
-    border-radius: 14px;
-    border: 1px solid #E2E8F0;
-    margin-bottom: 0;
+.ll-date-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 999px;
+    background: var(--ll-surface);
+    border: 1px solid var(--ll-border);
+    color: var(--ll-text);
+    font-size: 0.88rem;
+    font-weight: 600;
+    backdrop-filter: blur(12px);
 }
 
-.monthly-score-label {
-    font-size: 13px;
-    font-weight: 700;
-    color: #2563EB;
-    letter-spacing: 0.8px;
-    text-transform: uppercase;
+.ll-date-pill .ll-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ll-good);
+    box-shadow: 0 0 10px var(--ll-good);
 }
 
-.monthly-score-value {
-    font-size: 38px;
-    font-weight: 800;
-    margin-top: 7px;
-    color: #0F172A;
-}
-/* ============================= */
-/* Navigation */
-/* ============================= */
-
-div[data-testid="stSegmentedControl"]{
-    margin-top:20px;
-    margin-bottom:30px;
+/* ---------- Section headings ---------- */
+.ll-section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    margin: 2.2rem 0 0.9rem;
 }
 
-div[data-testid="stSegmentedControl"] > div{
-    background:#F8FAFC;
-    border-radius:18px;
-    padding:8px;
-    border:1px solid #E2E8F0;
-    box-shadow:0 8px 25px rgba(15,23,42,.06);
-}
-
-/* ============================
-   LIFE LENS NAVIGATION PILLS
-============================ */
-
-
-/* =========================================
-   LIFELENS — PRIMARY NAVIGATION PILLS
-========================================= */
-
-button[data-variant="pills"] {
-    min-height: 56px !important;
-    min-width: 175px !important;
-    padding: 12px 24px !important;
-
-    border-radius: 14px !important;
-    border: 1px solid #DCE5F2 !important;
-
-    background: #FFFFFF !important;
-    color: #334155 !important;
-
-    font-size: 16px !important;
-    font-weight: 600 !important;
-
-    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.05);
-
-    transition:
-        background-color 0.2s ease,
-        color 0.2s ease,
-        border-color 0.2s ease,
-        box-shadow 0.2s ease,
-        transform 0.2s ease !important;
-}
-
-/* Hover state */
-button[data-variant="pills"]:hover {
-    background: #EFF6FF !important;
-    border-color: #93B4F5 !important;
-    color: #1E3A8A !important;
-
-    box-shadow: 0 5px 14px rgba(30, 58, 138, 0.10);
-    transform: translateY(-1px);
-}
-
-/* Active page */
-button[data-variant="pills"][data-selected="true"] {
-    background: #1E3A8A !important;
-    color: #FFFFFF !important;
-    border: 1px solid #1E3A8A !important;
-
-    box-shadow: 0 5px 14px rgba(30, 58, 138, 0.18);
-}
-
-/* Keyboard accessibility */
-button[data-variant="pills"]:focus-visible {
-    outline: 3px solid #93C5FD !important;
-    outline-offset: 3px !important;
-}
-
-
-
-/* =========================================
-   LIFELENS — STICKY NAVIGATION
-========================================= */
-
-.st-key-lifelens_navigation {
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 9999 !important;
-
-    background: rgba(255, 255, 255, 0.97);
-    padding: 8px 0 !important;
-    margin-top: 0 !important;
-    margin-bottom: 8px !important;
-
-    border-bottom: 1px solid #E2E8F0;
-    backdrop-filter: blur(10px);
-}
-
-/* Dashboard quick-navigation links */
-.dashboard-jump-link {
-    display: block;
-    text-decoration: none !important;
-    border-radius: 9px;
-    transition: background-color 0.2s ease,
-                border-color 0.2s ease,
-                box-shadow 0.2s ease,
-                transform 0.2s ease;
-}
-
-.dashboard-jump-link:hover {
-    background-color: #E8F0FF;
-    border-color: #2446A8;
-    box-shadow: 0 3px 10px rgba(36, 70, 168, 0.16);
-    transform: translateY(-2px);
-}
-
-.dashboard-jump-link:active {
-    background-color: #D6E4FF;
-    transform: translateY(0);
-}
-
-/* Compact supporting actions */
-
-/* Supporting Actions */
-.supporting-action-row {
+.ll-section-title {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 11px 14px;
-    margin: 8px 0;
-    border: 1px solid #E2E8F0;
-    border-radius: 10px;
-    background: #F8FAFC;
-    color: #334155;
-    font-size: 14px;
+    gap: 9px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ll-muted);
+}
+
+.ll-section-sub {
+    font-size: 0.82rem;
+    color: var(--ll-faint);
+}
+
+/* ---------- Generic glass card ---------- */
+.ll-card {
+    position: relative;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.03));
+    border: 1px solid var(--ll-border);
+    border-radius: var(--ll-radius);
+    padding: 24px 26px;
+    box-shadow: var(--ll-shadow);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-sizing: border-box;
+    color: var(--ll-text);
+}
+
+.ll-card-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ll-violet);
+    margin-bottom: 16px;
+}
+
+.ll-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 11px;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+    background: var(--ll-surface-2);
+    border: 1px solid var(--ll-border);
+    color: var(--ll-text);
+}
+
+.ll-empty {
+    text-align: center;
+    color: var(--ll-muted);
+    padding: 34px 18px;
+    border: 1px dashed var(--ll-border-strong);
+    border-radius: var(--ll-radius);
+    font-size: 0.92rem;
     line-height: 1.55;
 }
 
-.supporting-action-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    width: 21px;
-    height: 21px;
-    border-radius: 50%;
-    background: #DCFCE7;
-    color: #15803D;
+.ll-empty .ll-empty-icon {
+    font-size: 1.8rem;
+    display: block;
+    margin-bottom: 6px;
+}
+
+/* ---------- Hero score ---------- */
+.ll-hero {
+    text-align: center;
+    padding: 8px 0 6px;
+}
+
+.ll-hero-label {
+    font-size: 0.78rem;
     font-weight: 700;
-    font-size: 12px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ll-muted);
+    margin-bottom: 20px;
 }
 
-/* AI Insight */
-/* Tomorrow's unified panel */
-.ai-insight-card {
-    background: #F1F5F9;
-    padding: 20px 22px;
-    border-radius: 12px 12px 0 0;
-    border-left: 5px solid #2563EB;
-    margin-bottom: 0 !important;
-    box-shadow: none;
-    border-bottom: 0;
+.ll-ring {
+    --p: 0;
+    position: relative;
+    margin: 0 auto;
+    width: clamp(210px, 26vw, 264px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: conic-gradient(from 0deg, var(--c1, #EC4899) 0, var(--c2, #8B5CF6) calc(var(--p) * 1%), rgba(255, 255, 255, 0.07) calc(var(--p) * 1%));
+    box-shadow: 0 0 70px color-mix(in srgb, var(--c2, #8B5CF6) 38%, transparent), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
-.best-action-card {
-    background: #F1F5F9;
-    padding: 18px 22px;
-    border-radius: 0 0 12px 12px;
-    border-left: 5px solid #0F766E;
-    margin-top: 0 !important;
-    box-shadow: none;
-    border-top: 0;
+.ll-ring::before {
+    content: "";
+    position: absolute;
+    inset: 14px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 30%, #1B1A3D 0%, var(--ll-bg-2) 70%);
+    box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.45);
 }
 
-/* Shared text styling */
-.ai-insight-card .ai-insight-text,
-.best-action-card .best-action-text {
-    font-size: 15px;
-    color: #334155;
-    line-height: 1.7;
-    margin-bottom: 0;
+.ll-ring-inner {
+    position: relative;
+    text-align: center;
+    line-height: 1;
 }
 
-.best-action-card .best-action-label {
-    margin-bottom: 9px;
-    color: #0F766E;
+.ll-ring-score {
+    font-size: clamp(3.4rem, 7vw, 4.8rem);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    background: linear-gradient(180deg, #FFFFFF, #CFC6FF);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
 }
 
-/* =========================================
-   LIFELENS — DAILY CHECK-IN
-   Professional, accessible styling
-========================================= */
-
-div[data-testid="stForm"] {
-    background: #FFFFFF !important;
-    border: 1px solid #D7E0EB !important;
-    border-radius: 14px !important;
-    padding: 28px !important;
+.ll-ring-max {
+    display: block;
+    margin-top: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--ll-faint);
 }
 
-/* Section headings */
-div[data-testid="stForm"] h2,
-div[data-testid="stForm"] h3 {
-    color: #17365D !important;
-    font-size: 25px !important;
-    font-weight: 700 !important;
-    line-height: 1.4 !important;
-    margin-top: 10px !important;
-    margin-bottom: 22px !important;
+.ll-hero-cat {
+    display: inline-block;
+    margin-top: 22px;
+    padding: 7px 20px;
+    border-radius: 999px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: var(--ll-cat, #C4B5FD);
+    background: color-mix(in srgb, var(--ll-cat, #A78BFA) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ll-cat, #A78BFA) 40%, transparent);
 }
 
-/* Clear, readable question labels */
-div[data-testid="stForm"] label {
-    color: #24364B !important;
-    font-size: 16px !important;
-    font-weight: 600 !important;
-    line-height: 1.5 !important;
+.ll-hero-foot {
+    margin-top: 12px;
+    font-size: 0.82rem;
+    color: var(--ll-faint);
 }
 
-/* Input controls */
-div[data-testid="stForm"] input,
-div[data-testid="stForm"] textarea,
-div[data-testid="stForm"] div[data-baseweb="select"] > div {
-    background: #FFFFFF !important;
-    color: #1F2937 !important;
-    border: 1px solid #B8C8DA !important;
-    border-radius: 8px !important;
-    font-size: 16px !important;
+.ll-cat-excellent {
+    --c1: #34D399;
+    --c2: #8B5CF6;
+    --ll-cat: #34D399;
 }
 
-/* Comfortable control sizes */
-div[data-testid="stForm"] input {
-    min-height: 44px;
+.ll-cat-healthy {
+    --c1: #EC4899;
+    --c2: #8B5CF6;
+    --ll-cat: #C4B5FD;
 }
 
-div[data-testid="stForm"] div[data-baseweb="select"] > div {
-    min-height: 46px !important;
+.ll-cat-needs {
+    --c1: #FBBF24;
+    --c2: #F472B6;
+    --ll-cat: #FBBF24;
 }
 
-/* Reflection area */
-div[data-testid="stForm"] textarea {
-    min-height: 125px !important;
-    padding: 12px !important;
-    line-height: 1.6 !important;
+.ll-cat-risk {
+    --c1: #FB7185;
+    --c2: #F43F5E;
+    --ll-cat: #FB7185;
 }
 
-/* Focus state for keyboard and accessibility */
-div[data-testid="stForm"] input:focus,
-div[data-testid="stForm"] textarea:focus {
-    border-color: #2563EB !important;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+.ll-cat-none {
+    --c1: #6B6894;
+    --c2: #6B6894;
+    --ll-cat: #A9A5CE;
 }
 
-/* Primary save action */
-div[data-testid="stForm"] button[kind="primaryFormSubmit"] {
-    min-height: 50px !important;
-    background: #1E3A8A !important;
-    color: #FFFFFF !important;
-    border: 1px solid #1E3A8A !important;
-    border-radius: 8px !important;
-    font-size: 16px !important;
-    font-weight: 650 !important;
+/* ---------- Metric cards ---------- */
+.ll-metrics {
+    display: grid;
+    gap: var(--ll-gap);
+    grid-template-columns: repeat(4, 1fr);
 }
 
-div[data-testid="stForm"] button[kind="primaryFormSubmit"]:hover {
-    background: #172F70 !important;
-    border-color: #172F70 !important;
-}
-
-/* Helper text */
-div[data-testid="stForm"] [data-testid="stCaptionContainer"] {
-    color: #52657B !important;
-    font-size: 14px !important;
-    line-height: 1.6 !important;
-}
-
-/* Consistent space between fields */
-div[data-testid="stForm"] div[data-testid="stSlider"],
-div[data-testid="stForm"] div[data-testid="stNumberInput"],
-div[data-testid="stForm"] div[data-testid="stSelectbox"] {
-    margin-bottom: 12px !important;
-}
-
-/* =========================================
-   LIFELENS — CHECK-IN LAYOUT REFINEMENT
-========================================= */
-
-/* More readable form labels */
-div[data-testid="stForm"] [data-testid="stWidgetLabel"] p {
-    font-size: 16px !important;
-    font-weight: 600 !important;
-    color: #24364B !important;
-    line-height: 1.45 !important;
-    margin-bottom: 5px !important;
-}
-
-/* Reduce excessive vertical gaps between controls */
-div[data-testid="stForm"] div[data-testid="stSlider"],
-div[data-testid="stForm"] div[data-testid="stNumberInput"],
-div[data-testid="stForm"] div[data-testid="stSelectbox"] {
-    margin-bottom: 3px !important;
-}
-
-/* Compact but readable section headings */
-div[data-testid="stForm"] h2,
-div[data-testid="stForm"] h3 {
-    font-size: 24px !important;
-    margin-top: 4px !important;
-    margin-bottom: 12px !important;
-}
-
-/* Keep optional reflection close to the questions */
-div[data-testid="stForm"] textarea {
-    min-height: 100px !important;
-}
-
-/* Reduce unnecessary space before the reflection heading */
-div[data-testid="stForm"] [data-testid="stVerticalBlock"] {
-    gap: 0.8rem;
-}
-
-/* =========================================
-   LIFELENS — DAILY CHECK-IN
-   Professional analytics design
-   ========================================= */
-
-/* Main page heading */
-h1 {
-    color: #142D4E;
-    font-size: 2.25rem !important;
-    font-weight: 750 !important;
-    line-height: 1.25 !important;
-    letter-spacing: -0.035em;
-    margin-bottom: 0.45rem !important;
-}
-
-/* Introductory text directly below headings */
-h1 + div p,
-h1 + p {
-    color: #475569;
-    font-size: 1.05rem !important;
-    line-height: 1.65 !important;
-}
-
-/* Main check-in form container */
-div[data-testid="stForm"] {
-    background: #FFFFFF;
-    border: 1px solid #D6E0EC;
-    border-radius: 16px;
-    padding: 24px !important;
-    box-shadow: 0 4px 14px rgba(20, 45, 78, 0.055);
-}
-
-/* Date label and other form labels */
-div[data-testid="stForm"] [data-testid="stWidgetLabel"] p {
-    color: #203653 !important;
-    font-size: 1rem !important;
-    font-weight: 650 !important;
-    line-height: 1.5 !important;
-}
-
-/* Date picker and text inputs */
-div[data-testid="stForm"] input,
-div[data-testid="stForm"] textarea {
-    font-size: 1rem !important;
-    color: #26364A !important;
-    border-radius: 9px !important;
-}
-
-/* Date field */
-div[data-testid="stForm"] input[ type="date" ] {
-    min-height: 48px;
-}
-
-/* Habit and reflection panels */
-.st-key-daily_habits_panel,
-.st-key-personal_reflections_panel {
-    background: #FFFFFF;
-    border: 1px solid #C8D6E6;
-    border-radius: 14px;
-    padding: 22px !important;
-    min-height: 100%;
-    box-shadow: 0 3px 10px rgba(20, 45, 78, 0.045);
-}
-
-/* Panel headings */
-.st-key-daily_habits_panel h3,
-.st-key-personal_reflections_panel h3,
-.st-key-optional_reflection_panel h3 {
-    color: #17365D !important;
-    font-size: 1.45rem !important;
-    font-weight: 750 !important;
-    line-height: 1.4 !important;
-    letter-spacing: -0.02em;
-    margin-top: 0 !important;
-    margin-bottom: 12px !important;
-}
-
-/* Supporting text */
-.st-key-daily_habits_panel [data-testid="stCaptionContainer"],
-.st-key-personal_reflections_panel [data-testid="stCaptionContainer"],
-.st-key-optional_reflection_panel [data-testid="stCaptionContainer"] {
-    color: #475569 !important;
-    font-size: 0.95rem !important;
-    line-height: 1.65 !important;
-}
-
-/* Consistent dropdown sizing */
-div[data-testid="stForm"] div[data-baseweb="select"] > div {
-    min-height: 48px;
-    background: #FFFFFF;
-    border-radius: 9px;
-    border-color: #C7D3E0;
-}
-
-/* Number input controls */
-div[data-testid="stForm"] div[data-testid="stNumberInput"] input {
-    min-height: 44px;
-}
-
-/* Clear keyboard focus */
-div[data-testid="stForm"] input:focus,
-div[data-testid="stForm"] textarea:focus {
-    border-color: #1D4ED8 !important;
-    box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.16) !important;
-}
-
-/* Sleep slider accent */
-div[data-testid="stForm"] div[data-testid="stSlider"] [role="slider"] {
-    background-color: #1D4ED8 !important;
-}
-
-/* Optional note field */
-.st-key-optional_reflection_panel textarea {
-    min-height: 120px !important;
-    line-height: 1.6 !important;
-}
-
-/* Save button */
-div[data-testid="stForm"] button[kind="primaryFormSubmit"] {
-    min-height: 52px;
-    border-radius: 9px;
-    font-size: 1.05rem !important;
-    font-weight: 700 !important;
-    padding: 0.75rem 1.25rem;
-}
-
-/* Smaller screens: preserve readable sizing and avoid cramped panels */
-@media (max-width: 768px) {
-    div[data-testid="stForm"] {
-        padding: 14px !important;
-    }
-
-    .st-key-daily_habits_panel,
-    .st-key-personal_reflections_panel {
-        padding: 16px !important;
-    }
-
-    h1 {
-        font-size: 1.8rem !important;
+@media (max-width: 900px) {
+    .ll-metrics {
+        grid-template-columns: repeat(2, 1fr);
     }
 }
 
-/* =========================================
-   LifeLens — readability upgrade
-   ========================================= */
-
-/* Main page title */
-h1 {
-    font-size: 2.6rem !important;
-    font-weight: 750 !important;
-    line-height: 1.25 !important;
-    color: #142D4E !important;
-    margin-bottom: 0.6rem !important;
+.ll-metric {
+    --tone: var(--ll-violet);
+    background: var(--ll-surface);
+    border: 1px solid var(--ll-border);
+    border-radius: var(--ll-radius-sm);
+    padding: 18px 18px 16px;
+    transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 }
 
-/* Introductory paragraph below the page title */
-h1 + div p,
-h1 + p {
-    font-size: 1.1rem !important;
-    line-height: 1.7 !important;
-    color: #334155 !important;
-}
-
-/* Panel headings */
-.st-key-daily_habits_panel h3,
-.st-key-personal_reflections_panel h3,
-.st-key-optional_reflection_panel h3 {
-    font-size: 1.6rem !important;
-    font-weight: 750 !important;
-    color: #17365D !important;
-    margin-bottom: 14px !important;
-}
-
-/* Supporting text */
-.st-key-daily_habits_panel [data-testid="stCaptionContainer"],
-.st-key-personal_reflections_panel [data-testid="stCaptionContainer"],
-.st-key-optional_reflection_panel [data-testid="stCaptionContainer"] {
-    font-size: 1rem !important;
-    line-height: 1.65 !important;
-    color: #475569 !important;
-}
-
-/* Form labels, including the date label */
-div[data-testid="stForm"] [data-testid="stWidgetLabel"] p {
-    font-size: 1.05rem !important;
-    font-weight: 650 !important;
-    color: #24364B !important;
-}
-
-/* Make field values easier to read */
-div[data-testid="stForm"] input,
-div[data-testid="stForm"] textarea {
-    font-size: 1rem !important;
-}
-
-/* Keep the title readable on smaller screens */
-@media (max-width: 768px) {
-    h1 {
-        font-size: 2rem !important;
-    }
-
-    .st-key-daily_habits_panel h3,
-    .st-key-personal_reflections_panel h3,
-    .st-key-optional_reflection_panel h3 {
-        font-size: 1.35rem !important;
-    }
-}
-
-/* LifeLens — hero banner contrast fix */
-.hero-card .hero-title {
-    color: #FFFFFF !important;
-    font-size: 36px !important;
-    font-weight: 750 !important;
-    line-height: 1.25 !important;
-}
-
-.hero-card .hero-subtitle {
-    color: #E2E8F0 !important;
-    font-size: 16px !important;
-    line-height: 1.6 !important;
-}
-
-/* Keep welcome text readable on the navy background */
-.hero-card .hero-greeting,
-.hero-card .hero-description {
-    color: #FFFFFF !important;
-}
-
-.hero-card .hero-date {
-    color: #E2E8F0 !important;
-}
-
-/* =========================================
-   LIFELENS — GLOBAL LAYOUT REFINEMENT
-   ========================================= */
-
-/* Reduce excessive space above the main content */
-.stApp .block-container {
-    padding-top: 1.5rem !important;
-    padding-bottom: 2rem !important;
-    padding-left: clamp(1.25rem, 4vw, 3.5rem) !important;
-    padding-right: clamp(1.25rem, 4vw, 3.5rem) !important;
-    max-width: 1600px;
-}
-
-/* Keep the hero banner visually compact and consistent */
-.hero-card {
-    padding: 22px 28px;
-    margin-top: 0;
-    margin-bottom: 1.5rem;
-    border-radius: 16px;
-}
-
-/* Clear brand typography */
-.hero-card .hero-title {
-    color: #FFFFFF !important;
-    font-size: 2.25rem !important;
-    font-weight: 750 !important;
-    line-height: 1.25 !important;
-    margin-bottom: 0.4rem !important;
-}
-
-.hero-card .hero-subtitle {
-    color: #E2E8F0 !important;
-    font-size: 1rem !important;
-    line-height: 1.5 !important;
-}
-
-/* Consistent heading hierarchy */
-.stApp h1 {
-    color: #142D4E;
-    line-height: 1.25;
-}
-
-.stApp h2 {
-    color: #17365D;
-    line-height: 1.35;
-}
-
-.stApp h3 {
-    color: #17365D;
-    line-height: 1.4;
-}
-
-/* Consistent rounded edges for standard buttons */
-.stApp button {
-    border-radius: 9px;
-}
-
-/* Avoid oversized page padding on smaller screens */
-@media (max-width: 768px) {
-    .stApp .block-container {
-        padding-top: 1rem !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-    }
-
-    .hero-card {
-        padding: 18px 20px;
-        margin-bottom: 1rem;
-    }
-
-    .hero-card .hero-title {
-        font-size: 1.8rem !important;
-    }
-}
-
-/* =========================================
-   LIFELENS — NAVIGATION AND DASHBOARD SPACING
-   ========================================= */
-
-/* Use more of the available browser width */
-
-.stApp .block-container {
-    max-width: 1800px !important;
-    padding-top: 2rem !important;
-    padding-bottom: 1.5rem !important;
-}
-
-
-/* Keep the brand banner prominent but compact */
-
-.hero-card {
-    padding: 26px 30px !important;
-    margin-top: 0.5rem !important;
-    margin-bottom: 1.25rem !important;
-    border-radius: 16px !important;
-    min-height: 112px;
-    box-sizing: border-box;
-}
-
-/* Main navigation buttons */
-div[data-testid="stPills"] button,
-div[data-testid="stSegmentedControl"] button {
-    min-height: 46px !important;
-    font-size: 15px !important;
-    font-weight: 600 !important;
-    border-radius: 10px !important;
-}
-
-/* Dashboard shortcut buttons */
-.stApp button[kind="secondary"] {
-    min-height: 42px;
-    font-size: 15px;
-    font-weight: 550;
-}
-
-/* Clear headings for dashboard sections */
-.stApp h2 {
-    font-size: 1.65rem !important;
-    font-weight: 700 !important;
-    color: #17365D !important;
-    margin-bottom: 0.7rem !important;
-}
-
-/* Keep section spacing consistent */
-
-.stApp hr {
-    margin-top: 1rem !important;
-    margin-bottom: 1rem !important;
-    border-color: #D9E2EC !important;
-}
-
-/* Smaller screens */
-@media (max-width: 768px) {
-    .stApp .block-container {
-        padding-top: 2.5rem !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-    }
-}
-
-/* =========================================
-   LIFELENS — PRIMARY NAVIGATION
-   ========================================= */
-
-/* Give the navigation its own clear space */
-.st-key-lifelens_navigation {
-    margin-top: 1rem;
-    margin-bottom: 1.1rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid #D9E2EC;
-}
-
-/* Improve the navigation pill text */
-.st-key-lifelens_navigation [data-testid="stPills"] button {
-    min-height: 48px !important;
-    padding: 0.65rem 1.15rem !important;
-    border-radius: 10px !important;
-    font-size: 15px !important;
-    font-weight: 600 !important;
-    transition: background-color 0.15s ease, border-color 0.15s ease;
-}
-
-/* Inactive navigation tabs */
-.st-key-lifelens_navigation [data-testid="stPills"] button:not(
-    [aria-pressed="true"]
-) {
-    background-color: #FFFFFF !important;
-    color: #334155 !important;
-    border: 1px solid #D5DFEA !important;
-}
-
-/* Active navigation tab */
-.st-key-lifelens_navigation [data-testid="stPills"] button[aria-pressed="true"] {
-    background-color: #1E3A8A !important;
-    color: #FFFFFF !important;
-    border: 1px solid #1E3A8A !important;
-    box-shadow: 0 2px 5px rgba(30, 58, 138, 0.16);
-}
-
-/* Hover state for inactive tabs */
-.st-key-lifelens_navigation [data-testid="stPills"] button:not(
-    [aria-pressed="true"]
-):hover {
-    background-color: #F1F5F9 !important;
-    border-color: #94A3B8 !important;
-    color: #17365D !important;
-}
-
-
-/* =========================================
-   LIFELENS — NAVIGATION POLISH
-   ========================================= */
-
-/* Main navigation container */
-.st-key-lifelens_navigation {
-    margin-top: 0.5rem;
-    margin-bottom: 1rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid #D9E2EC;
-}
-
-/* Main navigation tabs only */
-.st-key-lifelens_navigation [data-testid="stPills"] button {
-    min-height: 50px !important;
-    padding: 0.7rem 1.1rem !important;
-    border-radius: 10px !important;
-    font-size: 15px !important;
-    font-weight: 600 !important;
-}
-
-/* Dashboard shortcut buttons */
-.stApp button[kind="secondary"] {
-    min-height: 44px;
-    border-radius: 9px;
-    font-size: 15px;
-    font-weight: 550;
-}
-
-/* Consistent keyboard focus */
-.st-key-lifelens_navigation button:focus-visible,
-.stApp button[kind="secondary"]:focus-visible {
-    outline: 3px solid #93C5FD !important;
-    outline-offset: 2px !important;
-}
-
-/* =========================================
-   LIFELENS — WELLNESS SUMMARY POLISH
-   ========================================= */
-
-/* Overall wellness metric */
-/* Forecast metric cards */
-div[data-testid="stMetric"] {
-    background: #F1F5F9 !important;
-    border: 1px solid #D9E2EC !important;
-    border-radius: 14px !important;
-    padding: 20px 22px !important;
-    min-height: 112px;
-    box-shadow: 0 3px 12px rgba(15, 23, 42, 0.04);
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
-}
-
-/* Subtle hover effect */
-div[data-testid="stMetric"]:hover {
-    box-shadow: 0 5px 16px rgba(15, 23, 42, 0.08);
+.ll-metric:hover {
     transform: translateY(-2px);
-}
-/* Metric label */
-div[data-testid="stMetricLabel"] {
-    color: #475569 !important;
-    font-size: 14px !important;
-    font-weight: 600 !important;
+    border-color: var(--ll-border-strong);
+    background: var(--ll-surface-2);
 }
 
-/* Metric value */
-div[data-testid="stMetricValue"] {
-    color: #17365D !important;
-    font-size: 32px !important;
-    font-weight: 700 !important;
-}
-
-/* Wellness status message */
-div[data-testid="stAlert"] {
-    border-radius: 12px !important;
-    padding: 20px !important;
-    min-height: 76px;
-    display: flex;
-    align-items: center;
-    font-size: 16px !important;
-    font-weight: 600 !important;
-}
-
-/* Score explanation */
-.stApp [data-testid="stCaptionContainer"] {
-    color: #64748B;
-    font-size: 13px;
-    line-height: 1.5;
-}
-
-
-/* =========================================
-   LIFELENS — BALANCED WELLNESS SUMMARY
-   ========================================= */
-
-/* Outer summary panel */
-.st-key-wellness_summary {
-    background: #FFFFFF;
-    border: 1px solid #CBD5E1;
-    border-radius: 14px;
-    padding: 18px !important;
-    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.045);
-}
-
-/* Give both columns equal visual treatment */
-.st-key-wellness_summary [data-testid="column"] {
-    min-width: 0;
-}
-
-/* Score card */
-.st-key-wellness_summary [data-testid="stMetric"] {
-    background: #F1F5F9 !important;
-    border: 1px solid #CBD5E1 !important;
-    border-radius: 12px !important;
-    padding: 22px !important;
-    min-height: 118px !important;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-
-/* Score label */
-.st-key-wellness_summary [data-testid="stMetricLabel"] {
-    color: #475569 !important;
-    font-size: 16px !important;
-    font-weight: 600 !important;
-}
-
-/* Score value */
-.st-key-wellness_summary [data-testid="stMetricValue"] {
-    color: #17365D !important;
-    font-size: 34px !important;
-    font-weight: 700 !important;
-}
-
-/* Status card */
-.st-key-wellness_summary [data-testid="stAlert"] {
-    background: #E8F1FA !important;
-    border: 1px solid #C6D8EA !important;
-    border-radius: 12px !important;
-    min-height: 118px !important;
-    padding: 22px !important;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* Status text */
-.st-key-wellness_summary [data-testid="stAlert"] p {
-    color: #17365D !important;
-    font-size: 19px !important;
-    font-weight: 700 !important;
-}
-
-/* Explanation below both cards */
-.st-key-wellness_summary [data-testid="stCaptionContainer"] {
-    color: #52657B !important;
-    font-size: 14px !important;
-    margin-top: 8px;
-}
-
-/* =========================================
-   LIFELENS — WELLNESS OVERVIEW PANELS
-   ========================================= */
-
-.st-key-wellness_chart_panel,
-.st-key-wellness_insights_panel {
-    background: #FFFFFF;
-    border: 1px solid #CBD5E1;
-    border-radius: 14px;
-    padding: 18px !important;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
-    min-height: 100%;
-}
-
-/* Panel headings */
-.st-key-wellness_chart_panel h4,
-.st-key-wellness_insights_panel h4 {
-    color: #17365D !important;
-    font-size: 19px !important;
-    font-weight: 700 !important;
-    margin-bottom: 12px !important;
-}
-
-/* Insight messages fill the available panel width */
-.st-key-wellness_insights_panel [data-testid="stAlert"] {
-    width: 100%;
-    min-height: 58px;
-    border-radius: 9px !important;
-    padding: 12px 15px !important;
-    margin-bottom: 10px;
-}
-
-/* Readable insight text */
-.st-key-wellness_insights_panel [data-testid="stAlert"] p {
-    font-size: 15px !important;
-    font-weight: 600 !important;
-}
-/* =========================================
-   WELLNESS INSIGHT CARDS
-   ========================================= */
-
-.wellness-insight-card {
-    width: 100%;
-    box-sizing: border-box;
+.ll-metric-top {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 15px 18px;
-    margin: 12px 0;
-    border-radius: 10px;
-    font-size: 15px;
-    gap: 12px;
+    margin-bottom: 14px;
 }
 
-.wellness-insight-card span {
-    font-weight: 600;
-}
-
-.wellness-insight-card strong {
-    font-size: 16px;
-    font-weight: 700;
-    white-space: nowrap;
-}
-
-.wellness-insight-card.positive {
-    background: #E8F6EE;
-    border: 1px solid #B8E2C8;
-    color: #166534;
-}
-
-.wellness-insight-card.attention {
-    background: #FFF8DB;
-    border: 1px solid #F0D98A;
-    color: #8A5A00;
-}
-
-/* Personal Action Plan — section spacing */
-.st-key-action_plan_section {
-    margin-top: -12px;
-    padding-bottom: 22px;
-    margin-bottom: 18px;
-    border-bottom: 1px solid #E2E8F0;
-}
-
-/* Supporting Actions — keep it visually connected */
-.supporting-actions-heading {
-    color: #334155;
-    font-size: 18px;
-    font-weight: 650;
-    line-height: 1.4;
-    margin-top: 0;
-    margin-bottom: 6px;
-}
-
-/* Unified Today's Action Plan */
- .action-plan-unified-card {
-    background: #EFF6FF;
-    border-left: 5px solid #2563EB;
-    border-radius: 12px;
-    padding: 20px 22px;
-    margin-bottom: 8px;
-}
-
-/* Main priority */
-.action-plan-primary-label {
-    color: #2563EB;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.3px;
-    margin-bottom: 10px;
-}
-
-.action-plan-primary-text {
-    color: #26364A;
-    font-size: 16px;
-    font-weight: 600;
-    line-height: 1.65;
-}
-
-/* Supporting actions */
-.action-plan-supporting-section {
-    border-top: 1px solid #D5E1EF;
-    margin-top: 17px;
-    padding-top: 13px;
-}
-
-.action-plan-supporting-title {
-    color: #1E3A8A;
-    font-size: 15px;
-    font-weight: 700;
-    margin-bottom: 10px;
-}
-
-.action-plan-supporting-row {
+.ll-metric-name {
     display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 7px 0;
-    color: #334155;
-    font-size: 14px;
-    line-height: 1.6;
-}
-
-.action-plan-check {
-    display: inline-flex;
     align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    width: 19px;
-    height: 19px;
-    border-radius: 50%;
-    background: #DCFCE7;
-    color: #15803D;
-    font-size: 12px;
+    gap: 9px;
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--ll-muted);
+}
+
+.ll-metric-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+    font-size: 0.95rem;
+    background: color-mix(in srgb, var(--tone) 16%, transparent);
+}
+
+.ll-metric-value {
+    font-size: 1.85rem;
+    font-weight: 750;
+    letter-spacing: -0.03em;
+    color: var(--ll-text);
+    line-height: 1.1;
+}
+
+.ll-metric-value small {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--ll-faint);
+    margin-left: 4px;
+    letter-spacing: 0;
+}
+
+.ll-metric-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 10px;
+    font-size: 0.78rem;
+}
+
+.ll-status {
     font-weight: 700;
-    margin-top: 1px;
+    color: var(--tone);
 }
 
-/* Consistent spacing between dashboard sections */
-#action-section {
-    margin-bottom: 0;
+.ll-delta {
+    color: var(--ll-faint);
 }
 
-#wellness-section {
-    scroll-margin-top: 24px;
+.ll-bar {
+    height: 5px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.07);
+    margin-top: 12px;
+    overflow: hidden;
 }
 
-/* Behaviour Summary insight banner */
-div[data-testid="stAlert"] {
-    border-radius: 10px;
+.ll-bar>span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--tone), color-mix(in srgb, var(--tone) 55%, #fff));
 }
 
-/* Behaviour Trends — AI Analysis */
-.trend-insight-container {
+.ll-tone-good {
+    --tone: var(--ll-good);
+}
+
+.ll-tone-fair {
+    --tone: var(--ll-warn);
+}
+
+.ll-tone-bad {
+    --tone: var(--ll-bad);
+}
+
+.ll-tone-none {
+    --tone: var(--ll-violet);
+}
+
+/* ---------- AI insight (report) ---------- */
+.ll-report {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 18px;
 }
 
-.trend-insight-card {
-    padding: 14px 16px;
-    border-radius: 11px;
-    border-left: 4px solid;
+.ll-report-item {
+    padding-left: 16px;
+    border-left: 2px solid var(--accent, var(--ll-purple));
 }
 
-.trend-positive {
-    background: #F0FDF4;
-    border-left-color: #0F766E;
+.ll-report-item:nth-child(1) {
+    --accent: #A78BFA;
 }
 
-.trend-watch {
-    background: #FFFBEB;
-    border-left-color: #D97706;
+.ll-report-item:nth-child(2) {
+    --accent: #F472B6;
 }
 
-.trend-risk {
-    background: #FFF7ED;
-    border-left-color: #EA580C;
+.ll-report-item:nth-child(3) {
+    --accent: #60A5FA;
 }
 
-.trend-recommendation {
-    background: #EFF6FF;
-    border-left-color: #2563EB;
+.ll-report-item:nth-child(4) {
+    --accent: #34D399;
 }
 
-.trend-insight-label {
-    font-size: 12px;
-    font-weight: 750;
-    letter-spacing: 0.5px;
-    color: #1E3A8A;
+.ll-report-head {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 5px;
+}
+
+.ll-report-text {
+    font-size: 0.95rem;
+    line-height: 1.65;
+    color: #E5E2FA;
+    white-space: pre-line;
+}
+
+.ll-report-raw {
+    font-size: 0.95rem;
+    line-height: 1.7;
+    color: #E5E2FA;
+    white-space: pre-line;
+}
+
+/* ---------- Forecast ---------- */
+.ll-forecast-score {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.ll-forecast-score b {
+    font-size: 3.2rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    background: linear-gradient(180deg, #FFFFFF, #F9A8D4);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.ll-forecast-score span {
+    color: var(--ll-faint);
+    font-weight: 600;
+}
+
+.ll-forecast-cat {
+    margin: 6px 0 16px;
+    font-weight: 700;
+    color: var(--ll-violet);
+    font-size: 0.95rem;
+}
+
+.ll-rows {
+    display: flex;
+    flex-direction: column;
+}
+
+.ll-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 14px;
+    padding: 9px 0;
+    border-top: 1px solid var(--ll-border);
+    font-size: 0.9rem;
+}
+
+.ll-row:first-child {
+    border-top: 0;
+}
+
+.ll-row-name {
+    color: var(--ll-muted);
+}
+
+.ll-row-val {
+    font-weight: 700;
+    color: var(--ll-text);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.ll-arrow {
+    width: 26px;
+    text-align: center;
+    font-weight: 800;
+    font-size: 1.05rem;
+    color: var(--ll-faint);
+}
+
+.ll-arrow.good {
+    color: var(--ll-good);
+}
+
+.ll-arrow.bad {
+    color: var(--ll-bad);
+}
+
+.ll-arrow.flat {
+    color: var(--ll-faint);
+}
+
+/* ---------- Analysis tiles (forecast explanation / weekly / trend) ---------- */
+.ll-grid-4 {
+    display: grid;
+    gap: 22px 28px;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+.ll-tile-head {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent, var(--ll-violet));
     margin-bottom: 6px;
 }
 
-.trend-insight-text {
-    font-size: 14px;
-    color: #334155;
+.ll-tile-text {
+    font-size: 0.9rem;
     line-height: 1.6;
+    color: #E0DDF5;
 }
 
-/* LifeLens — Behaviour Trends tab styling */
-.stTabs [data-baseweb="tab-list"] {
-    gap: 8px;
-    border-bottom: 1px solid #E2E8F0;
+.ll-tile:nth-child(1) {
+    --accent: #A78BFA;
 }
 
-.stTabs [data-baseweb="tab"] {
-    color: #475569;
-    font-size: 14px;
-    font-weight: 600;
-    padding: 10px 14px;
+.ll-tile:nth-child(2) {
+    --accent: #60A5FA;
 }
 
-.stTabs [aria-selected="true"] {
-    color: #1E3A8A !important;
+.ll-tile:nth-child(3) {
+    --accent: #FBBF24;
+}
+
+.ll-tile:nth-child(4) {
+    --accent: #34D399;
+}
+
+.ll-trend-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.ll-trend-item {
+    padding-left: 14px;
+    border-left: 2px solid var(--accent);
+}
+
+.ll-trend-item.pos {
+    --accent: var(--ll-good);
+}
+
+.ll-trend-item.watch {
+    --accent: var(--ll-warn);
+}
+
+.ll-trend-item.info {
+    --accent: var(--ll-info);
+}
+
+/* ---------- Focus / discovery ---------- */
+.ll-focus-main {
+    font-size: 1.12rem;
+    font-weight: 650;
+    line-height: 1.45;
+    color: var(--ll-text);
+    margin-bottom: 18px;
+}
+
+.ll-sub-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ll-faint);
+    margin: 4px 0 10px;
+}
+
+.ll-checks {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.ll-check {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: #E0DDF5;
+}
+
+.ll-check i {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-top: 2px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-style: normal;
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: #0A0A18;
+    background: var(--ll-good);
+}
+
+.ll-why {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid var(--ll-border);
+    font-size: 0.88rem;
+    line-height: 1.6;
+    color: var(--ll-muted);
+}
+
+.ll-why b {
+    color: var(--ll-violet);
     font-weight: 700;
 }
 
-.stTabs [data-baseweb="tab-highlight"] {
-    background-color: #2563EB !important;
-    height: 3px;
+.ll-discovery {
+    background:
+        radial-gradient(420px 200px at 100% 0%, rgba(236, 72, 153, 0.16), transparent 70%),
+        linear-gradient(180deg, rgba(139, 92, 246, 0.16), rgba(255, 255, 255, 0.03));
 }
 
-/* Monthly Snapshot - Activity Indicator */
-.monthly-activity {
-    display: inline-block;
-    background: #EFF6FF;
-    color: #1D4ED8;
-    padding: 11px 16px;
-    border-radius: 9px;
-    font-size: 14px;
-    line-height: 1.5;
-    margin: 12px 0 10px;
-}
-.monthly-highlight-card {
-    padding: 16px 18px;
-    border-radius: 13px;
-    min-height: 92px;
-    border: 1px solid #E2E8F0;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+.ll-discovery-text {
+    font-size: 1.04rem;
+    line-height: 1.7;
+    color: var(--ll-text);
+    font-weight: 500;
 }
 
-.monthly-highlight-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 12px rgba(15, 23, 42, 0.08);
+/* ---------- Check-in tab ---------- */
+.ll-page-head {
+    margin: 0 0 18px;
 }
 
-.monthly-highlight-title {
-    font-size: 15px;
+.ll-page-head h1 {
+    margin: 6px 0 4px !important;
+    font-size: 1.9rem !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.03em;
+}
+
+.ll-page-head p {
+    margin: 0;
+    color: var(--ll-muted) !important;
+    font-size: 0.95rem;
+}
+
+.ll-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 0.72rem;
     font-weight: 700;
-    margin-bottom: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ll-violet);
+    background: rgba(139, 92, 246, 0.12);
+    border: 1px solid rgba(139, 92, 246, 0.3);
 }
 
-.monthly-highlight-message {
-    font-size: 14px;
-    line-height: 1.5;
-    color: #334155;
-}
-
-
-/* =====================================
-   REPORTS - WELLNESS METRIC CARDS
-===================================== */
-
-/* Metric card */
-.st-key-reports_metrics div[data-testid="stMetric"] {
-    font-family: Arial, Helvetica, sans-serif !important;
-    background: #F8FAFC !important;
-    border: 1px solid #DCE5EF !important;
-    border-radius: 13px !important;
-    padding: 15px 17px !important;
-    min-height: 100px;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.035);
-    transition: background 0.2s ease, border-color 0.2s ease,
-                box-shadow 0.2s ease;
-}
-
-/* Subtle hover */
-.st-key-reports_metrics div[data-testid="stMetric"]:hover {
-    background: #FFFFFF !important;
-    border-color: #B8CCE3 !important;
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
-}
-
-/* Metric labels */
-.st-key-reports_metrics div[data-testid="stMetricLabel"],
-.st-key-reports_metrics div[data-testid="stMetricLabel"] p {
-    font-family: Arial, Helvetica, sans-serif !important;
-    color: #475569 !important;
-    font-size: 14px !important;
-    font-weight: 500 !important;
-}
-
-/* Metric values */
-.st-key-reports_metrics div[data-testid="stMetricValue"],
-.st-key-reports_metrics div[data-testid="stMetricValue"] div {
-    font-family: Arial, Helvetica, sans-serif !important;
-    color: #17365D !important;
-    font-size: 28px !important;
-    font-weight: 700 !important;
-    font-variant-numeric: normal !important;
-}
-
-
-/* =====================================
-   REPORTS - WEEKLY AND MONTHLY SUMMARIES
-===================================== */
-
-.st-key-reports_weekly_summary,
-.st-key-reports_monthly_summary {
-    background: #F8FAFC !important;
-    border: 1px solid #DCE5EF !important;
-    border-left: 4px solid #4779B5 !important;
-    border-radius: 13px !important;
-    padding: 17px 19px !important;
-    min-height: 215px;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.035);
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
-}
-
-.st-key-reports_weekly_summary:hover,
-.st-key-reports_monthly_summary:hover {
-    box-shadow: 0 5px 14px rgba(15, 23, 42, 0.07);
-    transform: translateY(-2px);
-}
-
-/* Summary headings */
-.st-key-reports_weekly_summary strong,
-.st-key-reports_monthly_summary strong {
-    color: #17365D !important;
-}
-
-/* Summary supporting text */
-.st-key-reports_weekly_summary [data-testid="stCaption"],
-.st-key-reports_monthly_summary [data-testid="stCaption"] {
-    color: #64748B !important;
-    font-size: 12px !important;
-}
-
-/* =====================================
-   REPORTS - CSV DOWNLOAD BUTTON
-===================================== */
-
-.st-key-reports_download button {
-    background: #17365D !important;
-    color: #FFFFFF !important;
-    border: 1px solid #17365D !important;
-    border-radius: 10px !important;
-    min-height: 44px;
-    font-weight: 600 !important;
-    transition: all 0.2s ease;
-}
-
-.st-key-reports_download button:hover {
-    background: #244B78 !important;
-    border-color: #244B78 !important;
-    box-shadow: 0 4px 12px rgba(23, 54, 93, 0.18);
-    transform: translateY(-1px);
-}
-
-.st-key-reports_download button p {
-    color: #FFFFFF !important;
-}
-
-/* =====================================
-   REPORTS - REPORTING PERIOD SELECTOR
-===================================== */
-
-.st-key-reports_period div[data-baseweb="select"] > div {
-    background: #F1F5F9 !important;
-    border: 1.5px solid #C7D5E5 !important;
-    border-radius: 11px !important;
-    min-height: 48px !important;
-    padding: 3px 8px !important;
-    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04) !important;
-    transition: all 0.2s ease;
-}
-
-/* Selected period text */
-.st-key-reports_period div[data-baseweb="select"] span {
-    color: #17365D !important;
-    font-size: 14px !important;
-    font-weight: 600 !important;
-}
-
-/* Dropdown arrow */
-.st-key-reports_period div[data-baseweb="select"] svg {
-    fill: #23466D !important;
-    color: #23466D !important;
-}
-
-/* Hover effect */
-.st-key-reports_period div[data-baseweb="select"]:hover > div {
-    border-color: #4779B5 !important;
-    background: #F8FAFC !important;
-}
-
-/* Focus effect */
-.st-key-reports_period div[data-baseweb="select"]:focus-within > div {
-    border-color: #4779B5 !important;
-    box-shadow: 0 0 0 3px rgba(71, 121, 181, 0.12) !important;
-}
-
-
-/* =====================================
-   LIFELENS - ABOUT PAGE REDESIGN
-===================================== */
-
-/* Consistent professional typography */
-.about-hero-content,
-.about-section-title,
-.about-text-card,
-.about-feature-card,
-.about-step-card,
-.about-vision-card {
-    font-family: Arial, Helvetica, sans-serif !important;
-}
-
-/* Compact, clean hero section */
-.st-key-about_hero {
-    background: #F1F5F9 !important;
-    border: 1px solid #DCE5EF;
+.ll-date-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding: 8px 16px;
     border-radius: 12px;
-    padding: 24px 28px;
-    margin-bottom: 24px;
-    box-shadow: none !important;
+    font-size: 0.88rem;
+    background: var(--ll-surface);
+    border: 1px solid var(--ll-border);
+    color: var(--ll-text);
 }
 
-.about-hero-label {
-    color: #4779B5;
-    font-size: 12px;
+.ll-date-chip .muted {
+    color: var(--ll-muted);
+    font-weight: 600;
+}
+
+.ll-date-chip .tag {
+    color: var(--ll-good);
+    background: rgba(52, 211, 153, 0.12);
+    padding: 1px 9px;
+    border-radius: 999px;
+    font-size: 0.72rem;
     font-weight: 700;
-    letter-spacing: 1px;
+}
+
+.ll-panel-head {
     margin-bottom: 10px;
 }
 
-.about-hero-content h1 {
-    color: #17365D !important;
-    font-family: Arial, Helvetica, sans-serif !important;
-    font-size: 30px !important;
+.ll-panel-head h3 {
+    margin: 0 0 2px !important;
+    font-size: 1.02rem !important;
     font-weight: 700 !important;
-    margin: 0 0 8px 0 !important;
 }
 
-.about-hero-content h3 {
-    color: #334155 !important;
-    font-family: Arial, Helvetica, sans-serif !important;
-    font-size: 19px !important;
-    font-weight: 600 !important;
-    margin: 0 0 10px 0 !important;
+.ll-panel-head span {
+    color: var(--ll-muted);
+    font-size: 0.82rem;
 }
-
-.about-hero-content p {
-    color: #475569 !important;
-    font-size: 15px !important;
-    line-height: 1.7 !important;
-    max-width: 850px;
-    margin: 0 !important;
-}
-
-/* Section headings */
-.about-section-title {
-    color: #17365D;
-    font-size: 22px;
-    font-weight: 700;
-    margin: 25px 0 13px 0;
-    padding-bottom: 9px;
-    border-bottom: 1px solid #DCE5EF;
-}
-
-/* Overview and Why LifeLens */
-.about-text-card {
-    background: #FFFFFF;
-    border: 1px solid #DCE5EF;
-    border-radius: 10px;
-    padding: 20px 22px;
-    color: #334155;
-    font-size: 15px;
-    line-height: 1.8;
-}
-
-.about-text-card p {
-    color: #334155;
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 15px;
-    line-height: 1.8;
-    margin: 0 0 12px 0;
-}
-
-.about-text-card p:last-child {
-    margin-bottom: 0;
-}
-
-/* Feature cards */
-.about-feature-card {
-    background: #FFFFFF;
-    border: 1px solid #DCE5EF;
-    border-radius: 11px;
-    padding: 19px;
-    min-height: 155px;
-    height: 100%;
-    box-shadow: none;
-    transition: border-color 0.2s ease;
-}
-
-.about-feature-card:hover {
-    border-color: #8EADD0;
-}
-
-.about-feature-icon {
-    font-size: 24px;
-    margin-bottom: 12px;
-}
-
-.about-feature-title {
-    color: #17365D;
-    font-size: 16px;
-    font-weight: 700;
-    margin-bottom: 8px;
-}
-
-.about-feature-description {
-    color: #475569;
-    font-size: 14px;
-    line-height: 1.65;
-}
-
-/* How it works */
-.about-step-card {
-    background: #F8FAFC;
-    border: 1px solid #DCE5EF;
-    border-radius: 10px;
-    padding: 18px 15px;
-    min-height: 135px;
-    height: 100%;
-}
-
-.about-step-number {
-    color: #4779B5;
-    font-size: 14px;
-    font-weight: 700;
-    margin-bottom: 12px;
-}
-
-.about-step-title {
-    color: #17365D;
-    font-size: 17px;
-    font-weight: 700;
-    margin-bottom: 8px;
-}
-
-.about-step-description {
-    color: #475569;
-    font-size: 14px;
-    line-height: 1.6;
-}
-
-
-/* Vision section */
-.about-vision-card {
-    background: #FFFFFF;
-    border: 1px solid #DCE5EF;
-    border-left: 4px solid #4779B5;
-    border-radius: 11px;
-    padding: 20px 22px;
-    margin-bottom: 20px;
-    box-shadow: none;
-}
-
-.about-vision-card h3 {
-    color: #17365D !important;
-    font-family: Arial, Helvetica, sans-serif !important;
-    font-size: 21px !important;
-    font-weight: 700 !important;
-    margin: 0 0 12px 0 !important;
-}
-
-.about-vision-card p {
-    color: #334155 !important;
-    font-family: Arial, Helvetica, sans-serif !important;
-    font-size: 15px !important;
-    line-height: 1.8 !important;
-    margin: 0 0 10px 0 !important;
-}
-
-.about-vision-footer {
-    color: #4779B5;
-    font-family: Arial, Helvetica, sans-serif !important;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    margin-top: 15px;
-}
-/* LifeLens - Floating Back to Top Arrow */
-
-.lifelens-back-to-top {
-    position: fixed;
-    right: 28px;
-    bottom: 28px;
-    z-index: 999999;
-
-    width: 48px;
-    height: 48px;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    background: #17365D;
-    color: #FFFFFF !important;
-
-    border-radius: 50%;
-    text-decoration: none !important;
-
-    font-size: 26px;
-    font-weight: bold;
-
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
-}
-
-.lifelens-back-to-top:hover {
-    background: #244A73;
-    color: #FFFFFF !important;
-}
-
-/* Segmented Tab Bar Styling for Behaviour Trends */
-.st-key-trends_tabs [data-baseweb="tab-list"] {
-    background: #F1F5F9;
-    padding: 4px;
-    border-radius: 10px;
-    border-bottom: none !important;
-    gap: 4px;
-    display: inline-flex;
-    width: auto;
-    margin-bottom: 8px;
-}
-
-.st-key-trends_tabs [data-baseweb="tab"] {
-    padding: 6px 14px !important;
-    border-radius: 7px !important;
-    font-size: 12.5px !important;
-    font-weight: 600 !important;
-    color: #475569 !important;
-    background: transparent !important;
-    border: none !important;
-    transition: all 0.15s ease-in-out;
-}
-
-.st-key-trends_tabs [data-baseweb="tab"]:hover {
-    color: #0F172A !important;
-}
-
-.st-key-trends_tabs [aria-selected="true"] {
-    background: #FFFFFF !important;
-    color: #1E3A8A !important;
-    font-weight: 700 !important;
-    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08) !important;
-}
-
-.st-key-trends_tabs [data-baseweb="tab-highlight"] {
-    display: none !important;
-}
-
 
 /* ==========================================================================
-   LIFELENS - DAILY CHECK-IN REFINED UI STYLING
+   STREAMLIT NATIVE WIDGET OVERRIDES
+   (prefixed with .stApp so they beat the older light rules above)
    ========================================================================== */
 
-/* Main check-in form wrapper */
-div[data-testid="stForm"] {
-    background: #FFFFFF !important;
-    border: 1px solid #E2E8F0 !important;
-    border-radius: 16px !important;
-    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04) !important;
-    padding: 24px 28px !important;
+/* Containers that act as cards */
+.stApp .st-key-ll_trends,
+.stApp .st-key-daily_habits_panel,
+.stApp .st-key-personal_reflections_panel,
+.stApp .st-key-optional_reflection_panel {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025)) !important;
+    border: 1px solid var(--ll-border) !important;
+    border-radius: var(--ll-radius) !important;
+    padding: 22px 24px !important;
+    box-shadow: var(--ll-shadow) !important;
 }
 
-/* Habit and reflection cards */
-.st-key-daily_habits_panel,
-.st-key-personal_reflections_panel {
-    background: #F8FAFC !important;
-    border: 1px solid #E2E8F0 !important;
-    border-radius: 14px !important;
-    padding: 20px !important;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03) !important;
-    height: 100% !important;
+.stApp .st-key-ll_trends {
+    padding-top: 14px !important;
 }
 
-/* Date picker input */
-div[data-testid="stForm"] div[data-testid="stDateInput"] input {
-    background: #FFFFFF !important;
-    border: 1px solid #CBD5E1 !important;
-    border-radius: 9px !important;
-    font-weight: 500 !important;
-    color: #1E293B !important;
+/* Check-in form shell: transparent, panels carry the surface */
+.stApp div[data-testid="stForm"] {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
 }
 
-/* Number inputs (Screen time, Exercise, Study) */
-div[data-testid="stForm"] div[data-testid="stNumberInput"] input {
-    background: #FFFFFF !important;
-    border: 1px solid #CBD5E1 !important;
-    border-radius: 8px !important;
-    font-size: 14px !important;
-    font-weight: 500 !important;
-    color: #0F172A !important;
+.stApp div[data-testid="stForm"] [data-testid="stVerticalBlock"] {
+    gap: 1rem !important;
 }
 
-div[data-testid="stForm"] div[data-testid="stNumberInput"] button {
-    border: 1px solid #CBD5E1 !important;
-    background: #F1F5F9 !important;
-    color: #334155 !important;
-    border-radius: 6px !important;
+/* Labels */
+.stApp div[data-testid="stForm"] [data-testid="stWidgetLabel"] p,
+.stApp div[data-testid="stSlider"] [data-testid="stWidgetLabel"] p,
+.stApp div[data-testid="stSelectbox"] [data-testid="stWidgetLabel"] p {
+    color: var(--ll-text) !important;
+    font-size: 0.88rem !important;
+    font-weight: 600 !important;
 }
 
-div[data-testid="stForm"] div[data-testid="stNumberInput"] button:hover {
-    background: #E2E8F0 !important;
-    color: #0F172A !important;
+/* Text inputs, selects, textarea */
+.stApp div[data-testid="stForm"] div[data-baseweb="select"]>div,
+.stApp div[data-testid="stForm"] input,
+.stApp div[data-testid="stForm"] textarea,
+.stApp .st-key-optional_reflection_panel textarea,
+.stApp div[data-baseweb="select"]>div {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid var(--ll-border) !important;
+    border-radius: 12px !important;
+    color: var(--ll-text) !important;
 }
 
-/* Selectbox dropdowns */
-div[data-testid="stForm"] div[data-baseweb="select"] > div {
-    background: #FFFFFF !important;
-    border: 1px solid #CBD5E1 !important;
-    border-radius: 9px !important;
-    font-size: 14px !important;
-    color: #0F172A !important;
+.stApp div[data-testid="stForm"] div[data-baseweb="select"]>div {
+    min-height: 44px !important;
+    height: auto !important;
 }
 
-/* SLEEP SLIDER - Blue/Purple theme, eliminate any red track/thumb */
-div[data-testid="stForm"] div[data-testid="stSlider"] [role="slider"] {
-    background-color: #2563EB !important;
+.stApp div[data-testid="stForm"] textarea {
+    padding: 12px 14px !important;
+    font-size: 0.92rem !important;
+}
+
+.stApp div[data-testid="stForm"] input:focus,
+.stApp div[data-testid="stForm"] textarea:focus,
+.stApp .st-key-optional_reflection_panel textarea:focus {
+    border-color: var(--ll-purple) !important;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.25) !important;
+}
+
+.stApp div[data-baseweb="select"] span,
+.stApp div[data-baseweb="select"] svg {
+    color: var(--ll-text) !important;
+    fill: var(--ll-muted) !important;
+}
+
+div[data-baseweb="popover"] ul,
+div[data-baseweb="menu"] {
+    background: #17163A !important;
+    color: var(--ll-text) !important;
+    border: 1px solid var(--ll-border-strong) !important;
+    border-radius: 12px !important;
+}
+
+div[data-baseweb="popover"] li {
+    color: var(--ll-text) !important;
+}
+
+div[data-baseweb="popover"] li:hover {
+    background: rgba(139, 92, 246, 0.22) !important;
+}
+
+/* Sliders */
+.stApp div[data-testid="stForm"] div[data-testid="stSlider"] [role="slider"] {
+    background: linear-gradient(135deg, var(--ll-pink), var(--ll-purple)) !important;
     border: 2px solid #FFFFFF !important;
-    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4) !important;
+    box-shadow: 0 0 14px rgba(139, 92, 246, 0.65) !important;
     width: 20px !important;
     height: 20px !important;
 }
 
-div[data-testid="stForm"] div[data-testid="stSlider"] [data-baseweb="slider"] div[style*="background"] {
-    background-color: #2563EB !important;
+.stApp div[data-testid="stForm"] div[data-testid="stSlider"] [data-baseweb="slider"] div[style*="background"] {
+    background-color: var(--ll-purple) !important;
 }
 
-div[data-testid="stForm"] div[data-testid="stSlider"] div[data-testid="stTickBarMin"],
-div[data-testid="stForm"] div[data-testid="stSlider"] div[data-testid="stTickBarMax"] {
-    color: #64748B !important;
-    font-size: 11.5px !important;
+.stApp div[data-testid="stSlider"] div[data-testid="stTickBarMin"],
+.stApp div[data-testid="stSlider"] div[data-testid="stTickBarMax"] {
+    color: var(--ll-faint) !important;
 }
 
-/* Optional Reflection panel textarea */
-.st-key-optional_reflection_panel textarea,
-div[data-testid="stForm"] textarea {
-    background: #FFFFFF !important;
-    border: 1px solid #CBD5E1 !important;
-    border-radius: 10px !important;
-    font-size: 13.5px !important;
-    color: #1E293B !important;
-    padding: 10px 12px !important;
-}
-
-.st-key-optional_reflection_panel textarea:focus,
-div[data-testid="stForm"] input:focus,
-div[data-testid="stForm"] textarea:focus {
-    border-color: #2563EB !important;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
-}
-
-/* Form Submit Button */
-div[data-testid="stForm"] button[kind="primaryFormSubmit"] {
-    background: linear-gradient(135deg, #1E3A8A 0%, #2563EB 100%) !important;
-    color: #FFFFFF !important;
-    border: none !important;
-    border-radius: 10px !important;
-    font-size: 15px !important;
+.stApp div[data-testid="stSlider"] [data-testid="stSliderThumbValue"] {
+    color: var(--ll-violet) !important;
     font-weight: 700 !important;
-    letter-spacing: 0.02em !important;
-    min-height: 48px !important;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    cursor: pointer !important;
 }
 
-div[data-testid="stForm"] button[kind="primaryFormSubmit"]:hover {
-    background: linear-gradient(135deg, #1E40AF 0%, #1D4ED8 100%) !important;
-    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35) !important;
+/* Check-in: beat the older, more specific light-theme label/heading rules */
+.stApp div[data-testid="stForm"] h3,
+.stApp div[data-testid="stForm"] .ll-panel-head h3 {
+    color: var(--ll-text) !important;
+    font-size: 1.02rem !important;
+}
+
+.stApp div[data-testid="stForm"] [data-testid="stWidgetLabel"],
+.stApp div[data-testid="stForm"] [data-testid="stWidgetLabel"] *,
+.stApp div[data-testid="stForm"] div[data-testid="stSlider"] [data-testid="stWidgetLabel"] *,
+.stApp div[data-testid="stForm"] div[data-testid="stSelectbox"] [data-testid="stWidgetLabel"] * {
+    color: var(--ll-text) !important;
+}
+
+.stApp div[data-testid="stForm"] div[data-baseweb="select"]>div {
+    height: 46px !important;
+    min-height: 46px !important;
+    font-size: 0.92rem !important;
+    align-items: center;
+}
+
+.stApp div[data-testid="stForm"] button[kind="primaryFormSubmit"] p {
+    font-size: 1rem !important;
+    color: #FFFFFF !important;
+}
+
+/* Buttons */
+.stApp div[data-testid="stForm"] button[kind="primaryFormSubmit"],
+.stApp button[kind="primary"] {
+    background: linear-gradient(135deg, var(--ll-purple) 0%, var(--ll-pink) 100%) !important;
+    color: #FFFFFF !important;
+    border: 0 !important;
+    border-radius: 14px !important;
+    min-height: 52px !important;
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.01em !important;
+    box-shadow: 0 8px 28px rgba(139, 92, 246, 0.40) !important;
+    transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.stApp div[data-testid="stForm"] button[kind="primaryFormSubmit"]:hover,
+.stApp button[kind="primary"]:hover {
+    background: linear-gradient(135deg, #9D74FF 0%, #F25AAE 100%) !important;
+    box-shadow: 0 12px 34px rgba(236, 72, 153, 0.45) !important;
     transform: translateY(-1px) !important;
 }
 
-div[data-testid="stForm"] button[kind="primaryFormSubmit"]:active {
-    transform: translateY(0px) !important;
-    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2) !important;
+.stApp button[kind="secondary"] {
+    background: var(--ll-surface) !important;
+    color: var(--ll-text) !important;
+    border: 1px solid var(--ll-border) !important;
+    border-radius: 12px !important;
 }
 
-
-/* Daily Check-in compact form layout optimizations */
-div[data-testid="stForm"] {
-    padding: 16px 20px !important;
+.stApp button[kind="secondary"]:hover {
+    background: var(--ll-surface-2) !important;
+    border-color: var(--ll-purple) !important;
 }
 
-div[data-testid="stForm"] [data-testid="stVerticalBlock"] {
-    gap: 0.6rem !important;
+.stApp button:focus-visible {
+    outline: 2px solid var(--ll-violet) !important;
+    outline-offset: 2px !important;
 }
 
-.st-key-daily_habits_panel,
-.st-key-personal_reflections_panel {
-    padding: 14px 16px !important;
-    margin-bottom: 0px !important;
+/* Alerts (success / info / error) */
+.stApp div[data-testid="stAlert"] {
+    background: var(--ll-surface) !important;
+    border: 1px solid var(--ll-border) !important;
+    border-radius: var(--ll-radius-sm) !important;
+    color: var(--ll-text) !important;
+    min-height: 0 !important;
+    padding: 14px 18px !important;
+    font-size: 0.92rem !important;
+    font-weight: 500 !important;
 }
 
-/* Compact slider labels and tracks */
-div[data-testid="stForm"] div[data-testid="stSlider"] {
-    margin-bottom: 4px !important;
+.stApp div[data-testid="stAlert"] p {
+    color: var(--ll-text) !important;
 }
 
-div[data-testid="stForm"] div[data-testid="stSlider"] [data-testid="stWidgetLabel"] p {
-    font-size: 13px !important;
+.stApp div[data-testid="stAlert"]:has([data-testid="stAlertContentSuccess"]) {
+    border-color: rgba(52, 211, 153, 0.45) !important;
+    background: rgba(52, 211, 153, 0.09) !important;
+}
+
+.stApp div[data-testid="stAlert"]:has([data-testid="stAlertContentError"]) {
+    border-color: rgba(251, 113, 133, 0.45) !important;
+    background: rgba(251, 113, 133, 0.09) !important;
+}
+
+.stApp div[data-testid="stAlert"]:has([data-testid="stAlertContentInfo"]) {
+    border-color: rgba(96, 165, 250, 0.40) !important;
+    background: rgba(96, 165, 250, 0.08) !important;
+}
+
+.stApp div[data-testid="stAlert"]:has([data-testid="stAlertContentWarning"]) {
+    border-color: rgba(251, 191, 36, 0.45) !important;
+    background: rgba(251, 191, 36, 0.09) !important;
+}
+
+/* Expanders */
+.stApp details,
+.stApp div[data-testid="stExpander"] {
+    background: var(--ll-surface) !important;
+    border: 1px solid var(--ll-border) !important;
+    border-radius: var(--ll-radius-sm) !important;
+}
+
+.stApp div[data-testid="stExpander"] summary {
+    color: var(--ll-text) !important;
+    font-weight: 600;
+}
+
+.stApp div[data-testid="stExpander"] summary:hover {
+    color: var(--ll-violet) !important;
+}
+
+/* Tabs (trend switcher) */
+.stApp .st-key-trends_tabs [data-baseweb="tab-list"] {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid var(--ll-border);
+    padding: 4px;
+    border-radius: 12px;
+    gap: 4px;
+}
+
+.stApp .st-key-trends_tabs [data-baseweb="tab"] {
+    color: var(--ll-muted) !important;
+    background: transparent !important;
+    border-radius: 9px !important;
+}
+
+.stApp .st-key-trends_tabs [data-baseweb="tab"]:hover {
+    color: var(--ll-text) !important;
+}
+
+.stApp .st-key-trends_tabs [aria-selected="true"] {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.55), rgba(236, 72, 153, 0.45)) !important;
+    color: #FFFFFF !important;
+    box-shadow: none !important;
+}
+
+.stApp .st-key-trends_tabs [data-baseweb="tab-border"] {
+    display: none !important;
+}
+
+/* Navigation pills (ui/navigation.py) — sticky bar, dark glass */
+.stApp .st-key-lifelens_navigation {
+    background: rgba(10, 10, 24, 0.78) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+    border-bottom: 1px solid var(--ll-border) !important;
+    padding: 10px 0 !important;
+    margin-bottom: 1.2rem !important;
+}
+
+.stApp button[data-variant="pills"] {
+    min-width: 0 !important;
+    min-height: 44px !important;
+    padding: 8px 20px !important;
+    border-radius: 999px !important;
+    background: var(--ll-surface) !important;
+    color: var(--ll-muted) !important;
+    border: 1px solid var(--ll-border) !important;
+    box-shadow: none !important;
+    font-size: 0.92rem !important;
     font-weight: 600 !important;
-    color: #1E293B !important;
-    margin-bottom: 2px !important;
 }
 
-/* Compact dropdowns */
-div[data-testid="stForm"] div[data-testid="stSelectbox"] {
-    margin-bottom: 4px !important;
+.stApp button[data-variant="pills"] p {
+    color: inherit !important;
 }
 
-div[data-testid="stForm"] div[data-testid="stSelectbox"] [data-testid="stWidgetLabel"] p {
-    font-size: 13px !important;
-    font-weight: 600 !important;
-    color: #1E293B !important;
-    margin-bottom: 2px !important;
+.stApp button[data-variant="pills"]:hover {
+    background: var(--ll-surface-2) !important;
+    color: var(--ll-text) !important;
+    border-color: var(--ll-border-strong) !important;
+    transform: none !important;
 }
 
-div[data-testid="stForm"] div[data-baseweb="select"] > div {
-    min-height: 38px !important;
-    height: 38px !important;
+.stApp button[data-variant="pills"][data-selected="true"] {
+    background: linear-gradient(135deg, var(--ll-purple), var(--ll-pink)) !important;
+    color: #FFFFFF !important;
+    border: 0 !important;
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.40) !important;
 }
 
-/* Date input compact */
-div[data-testid="stForm"] div[data-testid="stDateInput"] {
-    margin-bottom: 4px !important;
+.stApp div[data-testid="stSegmentedControl"]>div {
+    background: var(--ll-surface) !important;
+    border: 1px solid var(--ll-border) !important;
+    box-shadow: none !important;
 }
 
-div[data-testid="stForm"] div[data-testid="stDateInput"] [data-testid="stWidgetLabel"] p {
-    font-size: 13px !important;
-    font-weight: 600 !important;
-    color: #1E293B !important;
-    margin-bottom: 2px !important;
+/* Sidebar (the current app.py has none; this keeps one tidy if you add it) */
+.stApp section[data-testid="stSidebar"] {
+    background: rgba(12, 12, 32, 0.92) !important;
+    border-right: 1px solid var(--ll-border);
 }
 
-div[data-testid="stForm"] div[data-testid="stDateInput"] input {
-    min-height: 38px !important;
-    height: 38px !important;
+.stApp section[data-testid="stSidebar"] * {
+    color: var(--ll-text);
+}
+
+/* Streamlit metrics, dataframes, back-to-top */
+.stApp div[data-testid="stMetric"] {
+    background: var(--ll-surface) !important;
+    border: 1px solid var(--ll-border) !important;
+    border-radius: var(--ll-radius-sm) !important;
+    box-shadow: none !important;
+}
+
+.stApp div[data-testid="stMetricLabel"] {
+    color: var(--ll-muted) !important;
+}
+
+.stApp div[data-testid="stMetricValue"] {
+    color: var(--ll-text) !important;
+}
+
+.stApp div[data-testid="stDataFrame"] {
+    border: 1px solid var(--ll-border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.stApp .lifelens-back-to-top {
+    background: linear-gradient(135deg, var(--ll-purple), var(--ll-pink)) !important;
+    box-shadow: 0 8px 24px rgba(139, 92, 246, 0.45) !important;
+}
+
+/* ---------- Bridge for light cards rendered by ui/*.py (not visible to me) ---------- */
+.stApp .correlation-card,
+.stApp .stat-card,
+.stApp .weekly-card,
+.stApp .monthly-score-card,
+.stApp .monthly-highlight-card,
+.stApp .about-text-card,
+.stApp .about-feature-card,
+.stApp .about-step-card,
+.stApp .insight-card,
+.stApp .forecast-card,
+.stApp .ai-insight-card,
+.stApp .best-action-card,
+.stApp .action-card,
+.stApp .discovery-card,
+.stApp .st-key-reports_metrics div[data-testid="stMetric"],
+.stApp .st-key-reports_monthly_summary {
+    background: var(--ll-surface) !important;
+    border: 1px solid var(--ll-border) !important;
+    border-radius: var(--ll-radius) !important;
+    color: var(--ll-text) !important;
+    box-shadow: var(--ll-shadow) !important;
+}
+
+.stApp .correlation-features,
+.stApp .correlation-text,
+.stApp .stat-value,
+.stApp .stat-title,
+.stApp .weekly-headline,
+.stApp .about-text-card p,
+.stApp .about-feature-title,
+.stApp .about-feature-description,
+.stApp .about-step-title,
+.stApp .about-step-description,
+.stApp .monthly-highlight-message {
+    color: var(--ll-text) !important;
+}
+
+.stApp .correlation-bar {
+    background: rgba(255, 255, 255, 0.09) !important;
+}
+
+.stApp .wellness-insight-card.positive {
+    background: rgba(52, 211, 153, 0.10) !important;
+    border-color: rgba(52, 211, 153, 0.35) !important;
+    color: #86EFAC !important;
+}
+
+.stApp .wellness-insight-card.attention {
+    background: rgba(251, 191, 36, 0.10) !important;
+    border-color: rgba(251, 191, 36, 0.35) !important;
+    color: #FDE68A !important;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+    .stApp .block-container {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+
+    .ll-card {
+        padding: 20px 18px;
+    }
+}
+
+@media (max-width: 640px) {
+    .ll-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .ll-metrics {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .ll-metric {
+        padding: 14px;
+    }
+
+    .ll-metric-value {
+        font-size: 1.5rem;
+    }
+
+    .ll-section-head {
+        margin-top: 1.7rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .ll-metric,
+    .stApp button {
+        transition: none !important;
+    }
 }
